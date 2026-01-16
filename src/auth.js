@@ -45,17 +45,18 @@ async function verifyAndStoreRegistration(user, response, expectedChallenge) {
   });
 
   if (verification.verified && verification.registrationInfo) {
-    const { credentialID, credentialPublicKey, counter } = verification.registrationInfo;
+    // v10 API: credential info is under registrationInfo.credential
+    const { credential } = verification.registrationInfo;
 
-    // Store the credential - encode as base64 for storage
-    const credentialIdBase64 = Buffer.from(credentialID).toString('base64url');
-    const publicKeyBase64 = Buffer.from(credentialPublicKey).toString('base64');
+    // credential.id is already base64url in v10
+    const credentialIdBase64 = credential.id;
+    const publicKeyBase64 = Buffer.from(credential.publicKey).toString('base64');
 
     passkeys.create(
       user.id,
       credentialIdBase64,
       publicKeyBase64,
-      counter,
+      credential.counter,
       response.response.transports
     );
 
