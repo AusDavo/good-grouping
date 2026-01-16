@@ -5,7 +5,9 @@
   "main": "src/index.js",
   "scripts": {
     "start": "node src/index.js",
-    "dev": "node --watch src/index.js",
+    "dev": "npm run build:css && node --watch src/index.js",
+    "build:css": "tailwindcss -i ./src/styles/input.css -o ./public/css/style.css",
+    "watch:css": "tailwindcss -i ./src/styles/input.css -o ./public/css/style.css --watch",
     "test": "jest",
     "test:watch": "jest --watch",
     "test:coverage": "jest --coverage"
@@ -22,8 +24,11 @@
     "multer": "^1.4.5-lts.1"
   },
   "devDependencies": {
+    "autoprefixer": "^10.4.20",
     "jest": "^29.7.0",
-    "supertest": "^7.0.0"
+    "postcss": "^8.4.49",
+    "supertest": "^7.0.0",
+    "tailwindcss": "^3.4.17"
   },
   "engines": {
     "node": ">=20.0.0"

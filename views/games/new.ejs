@@ -1,19 +1,30 @@
 <%- include('../layout', { body: `
-<div class="page-header">
-  <h1>Record New Game</h1>
+<div class="mb-8">
+  <h1 class="text-2xl font-bold text-slate-50">Record New Game</h1>
 </div>
 
-${typeof error !== 'undefined' && error ? `<div class="alert alert-error">${error}</div>` : ''}
+${typeof error !== 'undefined' && error ? '<div class="bg-rose-900/50 border border-rose-700 text-rose-200 px-4 py-3 rounded-lg mb-6">' + error + '</div>' : ''}
 
-<form action="/games" method="POST" class="game-form" id="game-form">
-  <div class="form-group">
-    <label for="playedAt">Date Played</label>
-    <input type="date" id="playedAt" name="playedAt" value="${new Date().toISOString().split('T')[0]}" required>
+<form action="/games" method="POST" id="game-form" class="bg-slate-800 rounded-2xl border border-slate-700 p-6 space-y-6">
+  <div>
+    <label for="playedAt" class="block text-sm font-medium text-slate-300 mb-2">Date Played</label>
+    <input
+      type="date"
+      id="playedAt"
+      name="playedAt"
+      value="${new Date().toISOString().split('T')[0]}"
+      required
+      class="w-full sm:w-auto px-4 py-2.5 bg-slate-700 border border-slate-600 rounded-xl text-slate-50 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200"
+    >
   </div>
 
-  <div class="form-group">
-    <label for="gameType">Game Type</label>
-    <select id="gameType" name="gameType">
+  <div>
+    <label for="gameType" class="block text-sm font-medium text-slate-300 mb-2">Game Type</label>
+    <select
+      id="gameType"
+      name="gameType"
+      class="w-full sm:w-auto px-4 py-2.5 bg-slate-700 border border-slate-600 rounded-xl text-slate-50 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200"
+    >
       <option value="Cricket" selected>Cricket</option>
       <option value="301">301</option>
       <option value="501">501</option>
@@ -22,41 +33,71 @@ ${typeof error !== 'undefined' && error ? `<div class="alert alert-error">${erro
     </select>
   </div>
 
-  <div class="form-group">
-    <label>Players</label>
-    <div id="players-container">
-      <div class="player-row">
-        <select name="players[0][userId]" required>
+  <div>
+    <label class="block text-sm font-medium text-slate-300 mb-3">Players</label>
+    <div id="players-container" class="space-y-3">
+      <div class="player-row flex flex-wrap gap-3 items-center p-4 bg-slate-700/50 rounded-xl border border-slate-600">
+        <select name="players[0][userId]" required class="flex-1 min-w-[150px] px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-slate-50 focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm">
           <option value="">Select player...</option>
-          ${allUsers.map(u => `<option value="${u.id}">${u.name}</option>`).join('')}
+          ${allUsers.map(u => '<option value="' + u.id + '">' + u.name + '</option>').join('')}
         </select>
-        <input type="number" name="players[0][score]" placeholder="Score (optional)">
-        <label class="winner-label">
-          <input type="checkbox" name="players[0][isWinner]" value="true"> Winner
+        <input type="number" name="players[0][score]" placeholder="Score" class="w-24 px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-slate-50 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm">
+        <label class="inline-flex items-center gap-2 text-sm text-slate-300 cursor-pointer">
+          <input type="checkbox" name="players[0][isWinner]" value="true" class="w-4 h-4 rounded border-slate-600 bg-slate-700 text-emerald-500 focus:ring-emerald-500 focus:ring-offset-slate-800">
+          <span class="flex items-center gap-1">
+            <svg class="w-4 h-4 text-emerald-500" fill="currentColor" viewBox="0 0 20 20">
+              <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"/>
+            </svg>
+            Winner
+          </span>
         </label>
       </div>
-      <div class="player-row">
-        <select name="players[1][userId]" required>
+      <div class="player-row flex flex-wrap gap-3 items-center p-4 bg-slate-700/50 rounded-xl border border-slate-600">
+        <select name="players[1][userId]" required class="flex-1 min-w-[150px] px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-slate-50 focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm">
           <option value="">Select player...</option>
-          ${allUsers.map(u => `<option value="${u.id}">${u.name}</option>`).join('')}
+          ${allUsers.map(u => '<option value="' + u.id + '">' + u.name + '</option>').join('')}
         </select>
-        <input type="number" name="players[1][score]" placeholder="Score (optional)">
-        <label class="winner-label">
-          <input type="checkbox" name="players[1][isWinner]" value="true"> Winner
+        <input type="number" name="players[1][score]" placeholder="Score" class="w-24 px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-slate-50 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm">
+        <label class="inline-flex items-center gap-2 text-sm text-slate-300 cursor-pointer">
+          <input type="checkbox" name="players[1][isWinner]" value="true" class="w-4 h-4 rounded border-slate-600 bg-slate-700 text-emerald-500 focus:ring-emerald-500 focus:ring-offset-slate-800">
+          <span class="flex items-center gap-1">
+            <svg class="w-4 h-4 text-emerald-500" fill="currentColor" viewBox="0 0 20 20">
+              <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"/>
+            </svg>
+            Winner
+          </span>
         </label>
       </div>
     </div>
-    <button type="button" id="add-player" class="btn btn-secondary btn-sm">Add Player</button>
+    <button type="button" id="add-player" class="mt-3 inline-flex items-center gap-2 px-4 py-2 bg-slate-700 hover:bg-slate-600 text-slate-300 text-sm font-medium rounded-lg transition-colors duration-200">
+      <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+      </svg>
+      Add Player
+    </button>
   </div>
 
-  <div class="form-group">
-    <label for="notes">Notes (optional)</label>
-    <textarea id="notes" name="notes" rows="3" placeholder="Any additional notes about the game..."></textarea>
+  <div>
+    <label for="notes" class="block text-sm font-medium text-slate-300 mb-2">Notes (optional)</label>
+    <textarea
+      id="notes"
+      name="notes"
+      rows="3"
+      placeholder="Any additional notes about the game..."
+      class="w-full px-4 py-3 bg-slate-700 border border-slate-600 rounded-xl text-slate-50 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 resize-none"
+    ></textarea>
   </div>
 
-  <div class="form-actions">
-    <a href="/" class="btn btn-secondary">Cancel</a>
-    <button type="submit" class="btn btn-primary">Save Game</button>
+  <div class="flex flex-col-reverse sm:flex-row gap-3 sm:justify-end pt-4 border-t border-slate-700">
+    <a href="/" class="inline-flex items-center justify-center px-5 py-2.5 bg-slate-700 hover:bg-slate-600 text-slate-300 font-medium rounded-xl transition-colors duration-200">
+      Cancel
+    </a>
+    <button type="submit" class="inline-flex items-center justify-center gap-2 px-5 py-2.5 bg-blue-600 hover:bg-blue-500 text-white font-medium rounded-xl transition-all duration-200 hover:shadow-glow-blue">
+      <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
+      </svg>
+      Save Game
+    </button>
   </div>
 </form>
 
@@ -67,18 +108,8 @@ let playerCount = 2;
 document.getElementById('add-player').addEventListener('click', function() {
   const container = document.getElementById('players-container');
   const row = document.createElement('div');
-  row.className = 'player-row';
-  row.innerHTML = \`
-    <select name="players[\${playerCount}][userId]">
-      <option value="">Select player...</option>
-      \${allUsers.map(u => \`<option value="\${u.id}">\${u.name}</option>\`).join('')}
-    </select>
-    <input type="number" name="players[\${playerCount}][score]" placeholder="Score (optional)">
-    <label class="winner-label">
-      <input type="checkbox" name="players[\${playerCount}][isWinner]" value="true"> Winner
-    </label>
-    <button type="button" class="btn-remove" onclick="this.parentElement.remove()">Remove</button>
-  \`;
+  row.className = 'player-row flex flex-wrap gap-3 items-center p-4 bg-slate-700/50 rounded-xl border border-slate-600';
+  row.innerHTML = '<select name="players[' + playerCount + '][userId]" class="flex-1 min-w-[150px] px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-slate-50 focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"><option value="">Select player...</option>' + allUsers.map(u => '<option value="' + u.id + '">' + u.name + '</option>').join('') + '</select><input type="number" name="players[' + playerCount + '][score]" placeholder="Score" class="w-24 px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-slate-50 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"><label class="inline-flex items-center gap-2 text-sm text-slate-300 cursor-pointer"><input type="checkbox" name="players[' + playerCount + '][isWinner]" value="true" class="w-4 h-4 rounded border-slate-600 bg-slate-700 text-emerald-500 focus:ring-emerald-500 focus:ring-offset-slate-800"><span class="flex items-center gap-1"><svg class="w-4 h-4 text-emerald-500" fill="currentColor" viewBox="0 0 20 20"><path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"/></svg>Winner</span></label><button type="button" onclick="this.parentElement.remove()" class="p-2 text-slate-400 hover:text-rose-400 hover:bg-rose-900/30 rounded-lg transition-colors duration-200"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" /></svg></button>';
   container.appendChild(row);
   playerCount++;
 });

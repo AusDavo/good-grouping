@@ -1,44 +1,56 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" class="dark">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title><%= title %> - Dart Scores</title>
   <link rel="stylesheet" href="/css/style.css">
 </head>
-<body>
-  <nav class="navbar">
-    <div class="container">
-      <a href="/" class="brand">Dart Scores</a>
+<body class="min-h-screen flex flex-col bg-slate-900 text-slate-50">
+  <nav class="bg-slate-800/80 backdrop-blur-sm border-b border-slate-700 sticky top-0 z-50">
+    <div class="max-w-4xl mx-auto px-4 py-3 flex justify-between items-center">
+      <a href="/" class="text-xl font-bold bg-gradient-to-r from-blue-400 to-blue-600 bg-clip-text text-transparent hover:from-blue-300 hover:to-blue-500 transition-all duration-300">
+        Dart Scores
+      </a>
       <% if (typeof user !== 'undefined' && user) { %>
-        <div class="nav-links">
-          <a href="/games/new">New Game</a>
-          <% if (user.is_admin) { %>
-            <a href="/admin/invites">Invites</a>
-          <% } %>
-          <a href="/profile" class="user-info">
-            <% if (user.avatar_url) { %>
-              <img src="<%= user.avatar_url %>" alt="<%= user.name %>" class="avatar-small">
-            <% } else { %>
-              <span class="avatar-placeholder-small"><%= user.name.charAt(0).toUpperCase() %></span>
-            <% } %>
-            <span class="user-name"><%= user.name %></span>
+        <div class="flex items-center gap-4">
+          <a href="/games/new" class="text-slate-300 hover:text-blue-400 transition-colors duration-200 text-sm font-medium">
+            New Game
           </a>
-          <form action="/logout" method="POST" class="logout-form">
-            <button type="submit" class="btn-link">Logout</button>
+          <% if (user.is_admin) { %>
+            <a href="/admin/invites" class="text-slate-300 hover:text-blue-400 transition-colors duration-200 text-sm font-medium">
+              Invites
+            </a>
+          <% } %>
+          <a href="/profile" class="flex items-center gap-2 group">
+            <% if (user.avatar_url) { %>
+              <img src="<%= user.avatar_url %>" alt="<%= user.name %>" class="w-8 h-8 rounded-full object-cover ring-2 ring-slate-600 group-hover:ring-blue-500 transition-all duration-200">
+            <% } else { %>
+              <span class="w-8 h-8 rounded-full bg-gradient-to-br from-blue-500 to-blue-700 flex items-center justify-center text-sm font-semibold text-white ring-2 ring-slate-600 group-hover:ring-blue-400 transition-all duration-200">
+                <%= user.name.charAt(0).toUpperCase() %>
+              </span>
+            <% } %>
+            <span class="text-slate-400 text-sm group-hover:text-slate-200 transition-colors duration-200 hidden sm:inline">
+              <%= user.name %>
+            </span>
+          </a>
+          <form action="/logout" method="POST" class="inline">
+            <button type="submit" class="text-slate-500 hover:text-rose-400 transition-colors duration-200 text-sm">
+              Logout
+            </button>
           </form>
         </div>
       <% } %>
     </div>
   </nav>
 
-  <main class="container">
+  <main class="flex-1 max-w-4xl mx-auto w-full px-4 py-8">
     <%- body %>
   </main>
 
-  <footer class="footer">
-    <div class="container">
-      <p>Dart Score Sharing</p>
+  <footer class="bg-slate-800/50 border-t border-slate-700/50 py-4">
+    <div class="max-w-4xl mx-auto px-4 text-center text-slate-500 text-sm">
+      Dart Score Sharing
     </div>
   </footer>
 
