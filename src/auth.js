@@ -139,6 +139,7 @@ async function verifyAuthentication(response, expectedChallenge, user = null) {
   }
 
   console.log('Passkey data:', JSON.stringify(passkey, null, 2));
+  console.log('Auth response:', JSON.stringify(response, null, 2));
 
   // If no user provided (conditional UI flow), look up from passkey
   if (!user) {
