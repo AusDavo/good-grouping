@@ -65,6 +65,8 @@ async function verifyAndStoreRegistration(user, response, expectedChallenge) {
       return { verified: false };
     }
 
+    console.log('Storing credential ID:', credentialIdBase64);
+
     passkeys.create(
       user.id,
       credentialIdBase64,
@@ -119,9 +121,15 @@ async function generateConditionalAuthenticationOptions() {
 async function verifyAuthentication(response, expectedChallenge, user = null) {
   // Find the passkey being used
   const credentialIdBase64 = response.id;
+  console.log('Looking up credential ID:', credentialIdBase64);
+
   const passkey = passkeys.findByCredentialId(credentialIdBase64);
+  console.log('Found passkey:', passkey ? 'yes' : 'no');
 
   if (!passkey) {
+    // Debug: list all stored credential IDs
+    const allPasskeys = passkeys.findAll ? passkeys.findAll() : [];
+    console.log('All stored credential IDs:', allPasskeys.map(p => p.credential_id));
     return { verified: false, error: 'Passkey not found' };
   }
 

@@ -89,6 +89,7 @@ const passkeyQueries = {
 
   findByCredentialId: db.prepare('SELECT * FROM passkeys WHERE credential_id = ?'),
   findByUserId: db.prepare('SELECT * FROM passkeys WHERE user_id = ?'),
+  findAll: db.prepare('SELECT * FROM passkeys'),
 
   updateCounter: db.prepare('UPDATE passkeys SET counter = ? WHERE id = ?'),
 };
@@ -204,6 +205,7 @@ const passkeys = {
       return k;
     });
   },
+  findAll: () => passkeyQueries.findAll.all(),
   updateCounter: (id, counter) => passkeyQueries.updateCounter.run(counter, id),
 };
 
