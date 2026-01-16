@@ -19,10 +19,14 @@ router.get('/new', (req, res) => {
   });
 });
 
+// Game types where highest score wins (draws possible if tied)
+const SCORE_BASED_GAMES = ['Cricket', '301', '501'];
+
 // Create new game
 router.post('/', (req, res) => {
   try {
     const { playedAt, gameType, notes, players } = req.body;
+    const normalizedGameType = gameType || 'Cricket';
 
     // Validate players
     if (!players || !Array.isArray(players) || players.length < 2) {
@@ -34,13 +38,28 @@ router.post('/', (req, res) => {
       });
     }
 
-    // Parse and validate player data
-    const playerData = players.map((p, index) => ({
+    // Parse player data
+    let playerData = players.map((p, index) => ({
       userId: p.userId,
       score: p.score ? parseInt(p.score, 10) : null,
       position: index + 1,
       isWinner: p.isWinner === 'true' || p.isWinner === true,
     })).filter(p => p.userId);
+
+    // For score-based games, auto-determine winner by highest score
+    // Only one player can win - if scores are tied, it's a draw (no winner)
+    if (SCORE_BASED_GAMES.includes(normalizedGameType)) {
+      const allHaveScores = playerData.every(p => p.score !== null);
+      if (allHaveScores) {
+        const maxScore = Math.max(...playerData.map(p => p.score));
+        const playersWithMaxScore = playerData.filter(p => p.score === maxScore);
+        const isDraw = playersWithMaxScore.length > 1;
+        playerData = playerData.map(p => ({
+          ...p,
+          isWinner: !isDraw && p.score === maxScore,
+        }));
+      }
+    }
 
     if (playerData.length < 2) {
       const allUsers = users.findAll();
@@ -54,7 +73,7 @@ router.post('/', (req, res) => {
     // Create the game
     const gameId = games.create(
       playedAt || new Date().toISOString().split('T')[0],
-      gameType || 'Cricket',
+      normalizedGameType,
       req.user.id,
       notes || null,
       playerData
@@ -67,7 +86,7 @@ router.post('/', (req, res) => {
           player.userId,
           'game_created',
           gameId,
-          `${req.user.name} recorded a ${gameType || 'Cricket'} game with you. Please confirm the results.`
+          `${req.user.name} recorded a ${normalizedGameType} game with you. Please confirm the results.`
         );
       }
     }
