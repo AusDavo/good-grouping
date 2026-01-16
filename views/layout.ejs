@@ -4,64 +4,90 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title><%= title %> - Good Grouping</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="/css/style.css">
 </head>
-<body class="min-h-screen flex flex-col bg-slate-900 text-slate-50">
-  <nav class="bg-slate-800/80 backdrop-blur-sm border-b border-slate-700 sticky top-0 z-50">
+<body class="min-h-screen flex flex-col scrollbar-pub">
+  <!-- Pub-style Navigation Bar -->
+  <nav class="bg-pub-wood-dark border-b-4 border-pub-wood-medium sticky top-0 z-50 shadow-warm">
     <div class="max-w-4xl mx-auto px-4 py-3 flex justify-between items-center">
-      <a href="/" class="text-xl font-bold bg-gradient-to-r from-blue-400 to-blue-600 bg-clip-text text-transparent hover:from-blue-300 hover:to-blue-500 transition-all duration-300">
-        Good Grouping
+      <!-- Logo with Neon Effect -->
+      <a href="/" class="flex items-center gap-3 group">
+        <!-- Mini Dartboard Icon -->
+        <div class="w-8 h-8 rounded-full border-2 border-pub-wood-light flex items-center justify-center bg-pub-green-900 group-hover:shadow-neon-pink-sm transition-all duration-300">
+          <span class="text-neon-pink text-xs">🎯</span>
+        </div>
+        <span class="text-xl font-pub-heading font-bold text-neon-pink animate-neon-flicker hover:text-neon-blue transition-colors duration-300" style="text-shadow: 0 0 10px #ff2d95, 0 0 20px #ff2d95;">
+          Good Grouping
+        </span>
       </a>
+
       <% if (typeof user !== 'undefined' && user) { %>
         <div class="flex items-center gap-4">
-          <a href="/games/new" class="text-slate-300 hover:text-blue-400 transition-colors duration-200 text-sm font-medium">
-            New Game
+          <!-- New Game Link -->
+          <a href="/games/new" class="text-aged-cream hover:text-neon-blue transition-colors duration-200 text-sm font-pub-heading uppercase tracking-wide flex items-center gap-2">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+            </svg>
+            <span class="hidden sm:inline">New Game</span>
           </a>
+
           <% if (user.is_admin) { %>
-            <a href="/admin/invites" class="text-slate-300 hover:text-blue-400 transition-colors duration-200 text-sm font-medium">
+            <!-- Admin Invites Link -->
+            <a href="/admin/invites" class="text-aged-cream hover:text-neon-yellow transition-colors duration-200 text-sm font-pub-heading uppercase tracking-wide">
               Invites
             </a>
           <% } %>
+
           <!-- Notification Bell -->
           <div class="relative" id="notification-dropdown">
-            <button id="notification-bell" class="relative text-slate-300 hover:text-blue-400 transition-colors duration-200">
+            <button id="notification-bell" class="relative text-aged-cream hover:text-neon-blue transition-colors duration-200">
               <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
               </svg>
               <% if (typeof unreadNotificationCount !== 'undefined' && unreadNotificationCount > 0) { %>
-                <span id="notification-badge" class="absolute -top-1 -right-1 bg-rose-500 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center font-medium">
+                <span id="notification-badge" class="notification-badge">
                   <%= unreadNotificationCount > 9 ? '9+' : unreadNotificationCount %>
                 </span>
               <% } else { %>
-                <span id="notification-badge" class="hidden absolute -top-1 -right-1 bg-rose-500 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center font-medium"></span>
+                <span id="notification-badge" class="hidden notification-badge"></span>
               <% } %>
             </button>
-            <!-- Notification Dropdown -->
-            <div id="notification-panel" class="hidden absolute right-0 mt-2 w-80 bg-slate-800 rounded-xl border border-slate-700 shadow-xl z-50">
-              <div class="p-4 border-b border-slate-700 flex justify-between items-center">
-                <span class="font-semibold text-slate-200">Notifications</span>
-                <a href="/notifications" class="text-sm text-blue-400 hover:text-blue-300">View all</a>
+
+            <!-- Notification Dropdown Panel -->
+            <div id="notification-panel" class="hidden absolute right-0 mt-2 w-80 card rounded-xl shadow-xl z-50">
+              <div class="chalk-header rounded-t-lg flex justify-between items-center">
+                <span class="font-pub-heading text-pub-chalk-text">Notifications</span>
+                <a href="/notifications" class="text-sm text-neon-blue hover:text-neon-pink transition-colors">View all</a>
               </div>
-              <div id="notification-list" class="max-h-96 overflow-y-auto">
-                <div class="p-4 text-center text-slate-500">Loading...</div>
+              <div id="notification-list" class="max-h-96 overflow-y-auto scrollbar-pub p-2">
+                <div class="p-4 text-center text-pub-chalk-accent">Loading...</div>
               </div>
             </div>
           </div>
+
+          <!-- User Profile Link -->
           <a href="/profile" class="flex items-center gap-2 group">
             <% if (user.avatar_url) { %>
-              <img src="<%= user.avatar_url %>" alt="" class="w-8 h-8 flex-shrink-0 rounded-full object-cover ring-2 ring-offset-0 ring-slate-600 group-hover:ring-blue-500 transition-all duration-200">
+              <div class="avatar-polaroid">
+                <img src="<%= user.avatar_url %>" alt="" class="w-8 h-8 rounded-polaroid object-cover">
+              </div>
             <% } else { %>
-              <div class="w-8 h-8 flex-shrink-0 rounded-full bg-gradient-to-br from-blue-500 to-blue-700 flex items-center justify-center ring-2 ring-offset-0 ring-slate-600 group-hover:ring-blue-400 transition-all duration-200">
-                <span class="text-sm font-semibold text-white"><%= user.name.charAt(0).toUpperCase() %></span>
+              <div class="w-10 h-10 rounded-full bg-pub-green-700 flex items-center justify-center border-2 border-neon-green group-hover:shadow-neon-green transition-all duration-200">
+                <span class="text-sm font-bold text-neon-green"><%= user.name.charAt(0).toUpperCase() %></span>
               </div>
             <% } %>
-            <span class="text-slate-400 text-sm group-hover:text-slate-200 transition-colors duration-200 hidden sm:block">
+            <span class="text-pub-chalk-accent text-sm font-pub-heading group-hover:text-neon-green transition-colors duration-200 hidden sm:block">
               <%= user.name %>
             </span>
           </a>
+
+          <!-- Logout Button -->
           <form action="/logout" method="POST" class="inline">
-            <button type="submit" class="text-slate-500 hover:text-rose-400 transition-colors duration-200 text-sm">
-              Logout
+            <button type="submit" class="text-pub-chalk-accent hover:text-neon-orange transition-colors duration-200 text-sm font-pub-heading uppercase">
+              Exit
             </button>
           </form>
         </div>
@@ -69,13 +95,24 @@
     </div>
   </nav>
 
+  <!-- Main Content Area -->
   <main class="flex-1 max-w-4xl mx-auto w-full px-4 py-8">
     <%- body %>
   </main>
 
-  <footer class="bg-slate-800/50 border-t border-slate-700/50 py-4">
-    <div class="max-w-4xl mx-auto px-4 text-center text-slate-500 text-sm">
-      Good Grouping
+  <!-- Pub-style Footer -->
+  <footer class="bg-pub-wood-dark border-t-4 border-pub-wood-medium py-6">
+    <div class="max-w-4xl mx-auto px-4 text-center">
+      <div class="flex items-center justify-center gap-3 mb-2">
+        <div class="h-px w-12 bg-gradient-to-r from-transparent to-pub-wood-light"></div>
+        <span class="text-neon-pink font-pub-heading text-sm animate-neon-flicker" style="text-shadow: 0 0 5px #ff2d95;">
+          🎯 Good Grouping 🎯
+        </span>
+        <div class="h-px w-12 bg-gradient-to-l from-transparent to-pub-wood-light"></div>
+      </div>
+      <p class="text-pub-chalk-accent text-xs font-pub-body">
+        Est. 2024 • Your Local Darts Scoreboard
+      </p>
     </div>
   </footer>
 

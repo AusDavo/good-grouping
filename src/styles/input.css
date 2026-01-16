@@ -1,57 +1,283 @@
+@import url('https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap');
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
-/* Custom base styles for dark mode */
+/* 1980s English Pub Darts Theme - Base Styles */
 @layer base {
   body {
-    @apply bg-slate-900 text-slate-50 antialiased;
+    @apply bg-pub-brown-900 text-pub-chalk-text antialiased font-pub-body;
+    background-image:
+      repeating-linear-gradient(
+        0deg,
+        transparent,
+        transparent 50px,
+        rgba(0, 0, 0, 0.03) 50px,
+        rgba(0, 0, 0, 0.03) 51px
+      ),
+      repeating-linear-gradient(
+        90deg,
+        transparent,
+        transparent 50px,
+        rgba(0, 0, 0, 0.02) 50px,
+        rgba(0, 0, 0, 0.02) 51px
+      );
+  }
+
+  h1, h2, h3, h4, h5, h6 {
+    @apply font-pub-heading;
   }
 }
 
-/* Custom component classes */
+/* Pub Theme Component Classes */
 @layer components {
-  /* Card component */
+  /* Chalkboard Card - Main container for content */
   .card {
-    @apply bg-slate-800 rounded-xl border border-slate-700 shadow-lg;
+    @apply bg-pub-green-900 rounded-lg border-4 border-pub-wood-medium shadow-chalk;
+    background-image: linear-gradient(180deg, rgba(26, 46, 26, 1) 0%, rgba(31, 61, 31, 0.95) 50%, rgba(26, 46, 26, 1) 100%);
+    position: relative;
   }
 
-  /* Form input styling */
+  .card::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)'/%3E%3C/svg%3E");
+    opacity: 0.03;
+    pointer-events: none;
+    border-radius: inherit;
+  }
+
+  /* Wood-framed card variant */
+  .card-wood {
+    @apply bg-pub-brown-800 rounded-lg border-4 border-pub-wood-medium shadow-warm;
+    background-image:
+      repeating-linear-gradient(90deg, transparent, transparent 2px, rgba(0,0,0,0.02) 2px, rgba(0,0,0,0.02) 4px),
+      linear-gradient(180deg, #2d241c 0%, #3d2817 50%, #2d241c 100%);
+  }
+
+  /* Form input styling - Chalk entry style */
   .input {
-    @apply w-full px-4 py-2.5 bg-slate-700 border border-slate-600 rounded-lg text-slate-50 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200;
+    @apply w-full px-4 py-2.5 bg-pub-green-800/50 border-2 border-pub-wood-medium rounded text-pub-chalk-text placeholder-pub-chalk-accent focus:outline-none focus:border-neon-blue focus:shadow-neon-blue-sm transition-all duration-200;
   }
 
-  /* Button base */
+  /* Select styling */
+  select.input {
+    @apply cursor-pointer;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3E%3Cpath stroke='%23d4d4c8' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='M6 8l4 4 4-4'/%3E%3C/svg%3E");
+    background-position: right 0.5rem center;
+    background-repeat: no-repeat;
+    background-size: 1.5em 1.5em;
+    padding-right: 2.5rem;
+    -webkit-appearance: none;
+    -moz-appearance: none;
+    appearance: none;
+  }
+
+  /* Button base - Coaster style */
   .btn {
-    @apply inline-flex items-center justify-center px-4 py-2.5 rounded-lg font-medium text-sm transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-slate-900;
+    @apply inline-flex items-center justify-center px-5 py-2.5 rounded-full font-pub-heading font-bold text-sm transition-all duration-200 focus:outline-none uppercase tracking-wide;
+    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
   }
 
   .btn-primary {
-    @apply bg-blue-600 text-white hover:bg-blue-500 hover:shadow-glow-blue focus:ring-blue-500;
+    @apply bg-pub-brown-600 text-aged-cream border-2 border-pub-wood-light hover:bg-pub-brown-500 hover:shadow-brass;
   }
 
   .btn-secondary {
-    @apply bg-slate-700 text-slate-200 hover:bg-slate-600 focus:ring-slate-500;
+    @apply bg-pub-green-700 text-pub-chalk-text border-2 border-pub-green-600 hover:bg-pub-green-600;
   }
 
   .btn-danger {
-    @apply bg-rose-600 text-white hover:bg-rose-500 focus:ring-rose-500;
+    @apply bg-pub-red-600 text-aged-cream border-2 border-pub-red-500 hover:bg-pub-red-500;
+  }
+
+  .btn-neon {
+    @apply bg-transparent text-neon-pink border-2 border-neon-pink hover:shadow-neon-pink hover:bg-neon-pink/10 animate-neon-flicker;
   }
 
   .btn-sm {
     @apply px-3 py-1.5 text-xs;
   }
 
-  /* Alert components */
+  /* Alert components - Pub notice style */
   .alert {
-    @apply px-4 py-3 rounded-lg border;
+    @apply px-4 py-3 rounded-lg border-2 font-pub-body;
   }
 
   .alert-error {
-    @apply bg-rose-900/50 border-rose-700 text-rose-200;
+    @apply bg-pub-red-700/50 border-pub-red-500 text-aged-cream;
   }
 
   .alert-success {
-    @apply bg-emerald-900/50 border-emerald-700 text-emerald-200;
+    @apply bg-pub-green-700/50 border-neon-green text-neon-green;
+  }
+
+  /* Neon text effects */
+  .text-neon-glow-blue {
+    @apply text-neon-blue;
+    text-shadow: 0 0 5px #00d4ff, 0 0 10px #00d4ff, 0 0 20px #00d4ff;
+  }
+
+  .text-neon-glow-pink {
+    @apply text-neon-pink;
+    text-shadow: 0 0 5px #ff2d95, 0 0 10px #ff2d95, 0 0 20px #ff2d95;
+  }
+
+  .text-neon-glow-yellow {
+    @apply text-neon-yellow;
+    text-shadow: 0 0 5px #ffed4a, 0 0 10px #ffed4a;
+  }
+
+  /* Chalk text effect */
+  .text-chalk {
+    @apply text-pub-chalk-text;
+    text-shadow: 0 1px 0 rgba(0, 0, 0, 0.3);
+  }
+
+  /* Polaroid-style avatar frame */
+  .avatar-polaroid {
+    @apply bg-aged-cream p-1 pb-3 shadow-warm;
+    transform: rotate(-2deg);
+  }
+
+  .avatar-polaroid:nth-child(even) {
+    transform: rotate(2deg);
+  }
+
+  /* Trophy/Badge styling */
+  .badge-trophy {
+    @apply inline-flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-bold uppercase tracking-wider;
+    @apply bg-gradient-to-r from-yellow-600 via-yellow-400 to-yellow-600 text-pub-brown-900;
+    @apply border border-yellow-300 shadow-brass;
+  }
+
+  .badge-winner {
+    @apply inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-bold;
+    @apply bg-neon-green/20 text-neon-green border border-neon-green/50;
+  }
+
+  .badge-draw {
+    @apply inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-bold;
+    @apply bg-neon-yellow/20 text-neon-yellow border border-neon-yellow/50;
+  }
+
+  /* Score display - Pixelated/arcade style */
+  .score-display {
+    @apply font-pub-display text-neon-green tracking-wider;
+    text-shadow: 0 0 10px #39ff14;
+  }
+
+  /* Wood frame effect */
+  .wood-frame {
+    @apply border-4 border-pub-wood-medium rounded-lg shadow-warm;
+    background: linear-gradient(135deg, #5c3d2e 0%, #4a3c2e 50%, #5c3d2e 100%);
+  }
+
+  /* Chalkboard header */
+  .chalk-header {
+    @apply bg-pub-green-900 text-pub-chalk-text px-4 py-2 border-b-2 border-pub-wood-medium;
+    background-image: linear-gradient(180deg, rgba(31, 61, 31, 1) 0%, rgba(26, 46, 26, 1) 100%);
+  }
+
+  /* Dartboard accent */
+  .dartboard-accent {
+    @apply rounded-full border-4 border-pub-wood-medium;
+    background: conic-gradient(
+      from 0deg,
+      #1a1a1a 0deg 18deg,
+      #f5f5dc 18deg 36deg,
+      #1a1a1a 36deg 54deg,
+      #f5f5dc 54deg 72deg,
+      #1a1a1a 72deg 90deg,
+      #f5f5dc 90deg 108deg,
+      #1a1a1a 108deg 126deg,
+      #f5f5dc 126deg 144deg,
+      #1a1a1a 144deg 162deg,
+      #f5f5dc 162deg 180deg,
+      #1a1a1a 180deg 198deg,
+      #f5f5dc 198deg 216deg,
+      #1a1a1a 216deg 234deg,
+      #f5f5dc 234deg 252deg,
+      #1a1a1a 252deg 270deg,
+      #f5f5dc 270deg 288deg,
+      #1a1a1a 288deg 306deg,
+      #f5f5dc 306deg 324deg,
+      #1a1a1a 324deg 342deg,
+      #f5f5dc 342deg 360deg
+    );
+  }
+
+  /* Leaderboard/bracket styling */
+  .leaderboard-row {
+    @apply flex items-center gap-4 px-4 py-3 border-b border-pub-green-700/50 hover:bg-pub-green-800/50 transition-colors;
+  }
+
+  .leaderboard-row:hover {
+    @apply border-neon-pink/30;
+  }
+
+  /* Pub table styling */
+  .pub-table {
+    @apply w-full border-collapse;
+  }
+
+  .pub-table th {
+    @apply bg-pub-wood-medium text-aged-cream px-4 py-3 text-left font-pub-heading text-sm uppercase tracking-wider;
+  }
+
+  .pub-table td {
+    @apply px-4 py-3 border-b border-pub-green-700/30;
+  }
+
+  .pub-table tr:hover td {
+    @apply bg-pub-green-800/30;
+  }
+
+  /* Speech bubble for comments */
+  .speech-bubble {
+    @apply relative bg-pub-brown-700 text-pub-chalk-text rounded-lg px-4 py-2;
+  }
+
+  .speech-bubble::after {
+    content: '';
+    position: absolute;
+    bottom: -8px;
+    left: 20px;
+    border-width: 8px 8px 0;
+    border-style: solid;
+    border-color: #4a3c2e transparent transparent;
+  }
+
+  /* Notification badge */
+  .notification-badge {
+    @apply absolute -top-1 -right-1 bg-neon-pink text-white text-xs rounded-full w-5 h-5 flex items-center justify-center font-bold shadow-neon-pink-sm;
+  }
+
+  /* Game type icons container */
+  .game-icon {
+    @apply w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold;
+    @apply bg-pub-wood-medium text-aged-cream border-2 border-pub-wood-light;
+  }
+}
+
+/* Custom scrollbar for pub theme */
+@layer utilities {
+  .scrollbar-pub::-webkit-scrollbar {
+    width: 8px;
+  }
+
+  .scrollbar-pub::-webkit-scrollbar-track {
+    background: #1a1410;
+  }
+
+  .scrollbar-pub::-webkit-scrollbar-thumb {
+    background: #5c3d2e;
+    border-radius: 4px;
+  }
+
+  .scrollbar-pub::-webkit-scrollbar-thumb:hover {
+    background: #8b6f56;
   }
 }

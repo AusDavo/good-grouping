@@ -1,30 +1,38 @@
 <%- include('../layout', { body: `
 <div class="mb-8">
-  <a href="/" class="inline-flex items-center gap-2 px-4 py-2 bg-slate-700 hover:bg-slate-600 text-slate-300 text-sm font-medium rounded-xl transition-colors duration-200 mb-6">
+  <a href="/" class="btn btn-secondary btn-sm inline-flex items-center gap-2 mb-6">
     <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
       <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
     </svg>
-    Back
+    Back to Board
   </a>
 
-  <div class="bg-slate-800 rounded-2xl border border-slate-700 p-8">
+  <!-- Player Profile Card - Wood Frame Style -->
+  <div class="card-wood p-8">
     <div class="flex flex-col sm:flex-row items-center gap-6">
+      <!-- Polaroid Avatar -->
       <div class="flex-shrink-0">
-        ${profileUser.avatar_url
-          ? '<img src="' + profileUser.avatar_url + '" alt="" class="w-24 h-24 rounded-full object-cover ring-4 ring-slate-700">'
-          : '<div class="w-24 h-24 rounded-full bg-gradient-to-br from-blue-500 to-blue-700 flex items-center justify-center ring-4 ring-slate-700"><span class="text-3xl font-bold text-white">' + profileUser.name.charAt(0).toUpperCase() + '</span></div>'
-        }
+        <div class="avatar-polaroid">
+          ${profileUser.avatar_url
+            ? '<img src="' + profileUser.avatar_url + '" alt="" class="w-24 h-24 rounded-polaroid object-cover">'
+            : '<div class="w-24 h-24 rounded-polaroid bg-pub-green-700 flex items-center justify-center"><span class="text-3xl font-bold text-neon-green">' + profileUser.name.charAt(0).toUpperCase() + '</span></div>'
+          }
+        </div>
       </div>
+
+      <!-- Player Info & Stats -->
       <div class="text-center sm:text-left">
-        <h1 class="text-2xl font-bold text-slate-50">${profileUser.name}</h1>
-        <div class="flex flex-wrap justify-center sm:justify-start gap-4 mt-3">
+        <h1 class="text-2xl font-pub-heading font-bold text-aged-cream">${profileUser.name}</h1>
+        <div class="flex flex-wrap justify-center sm:justify-start gap-6 mt-4">
+          <!-- Total Games Stat -->
           <div class="text-center">
-            <p class="text-2xl font-bold text-blue-400">${stats.totalGames}</p>
-            <p class="text-xs text-slate-500 uppercase tracking-wide">Games</p>
+            <p class="text-3xl font-pub-display text-neon-blue" style="text-shadow: 0 0 10px #00d4ff;">${stats.totalGames}</p>
+            <p class="text-xs text-pub-chalk-accent uppercase tracking-wider font-pub-heading">Games</p>
           </div>
+          <!-- Wins Stat -->
           <div class="text-center">
-            <p class="text-2xl font-bold text-emerald-400">${stats.wins}</p>
-            <p class="text-xs text-slate-500 uppercase tracking-wide">Wins</p>
+            <p class="text-3xl font-pub-display text-neon-green" style="text-shadow: 0 0 10px #39ff14;">${stats.wins}</p>
+            <p class="text-xs text-pub-chalk-accent uppercase tracking-wider font-pub-heading">Wins</p>
           </div>
         </div>
       </div>
@@ -32,7 +40,8 @@
   </div>
 </div>
 
-${games.length > 0 ? '<div><h2 class="text-lg font-semibold text-slate-200 mb-4">Recent Games</h2><div class="space-y-3">' + games.map(game => {
+<!-- Recent Games Section -->
+${games.length > 0 ? '<div><h2 class="text-lg font-pub-heading font-semibold text-pub-chalk-text mb-4 flex items-center gap-2"><span class="text-neon-pink">📜</span> Recent Games</h2><div class="space-y-3">' + games.map(game => {
   const playerResult = game.players.find(p => p.user_id === profileUser.id);
   const isWinner = playerResult && playerResult.is_winner;
   // Only Cricket uses score-based winner detection; 301/501 are first-to-zero games
@@ -45,15 +54,17 @@ ${games.length > 0 ? '<div><h2 class="text-lg font-semibold text-slate-200 mb-4"
   const isDrawPlayer = isDraw && playerResult && playerResult.score === maxScore;
 
   let resultBadge = '';
-  let cardClass = 'bg-slate-800 border-slate-700';
+  let cardClass = 'card';
   if (isWinner) {
-    resultBadge = '<span class="inline-flex items-center gap-1 bg-emerald-600 text-white text-xs px-2 py-0.5 rounded-full font-medium"><svg class="w-3 h-3" fill="currentColor" viewBox="0 0 20 20"><path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"/></svg>Won</span>';
-    cardClass = 'bg-emerald-900/20 border-emerald-700/50';
+    resultBadge = '<span class="badge-winner"><svg class="w-3 h-3" fill="currentColor" viewBox="0 0 20 20"><path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"/></svg>Won</span>';
+    cardClass = 'card bg-neon-green/10 border-neon-green/30';
   } else if (isDrawPlayer) {
-    resultBadge = '<span class="inline-flex items-center gap-1 bg-amber-600 text-white text-xs px-2 py-0.5 rounded-full font-medium"><svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4"/></svg>Draw</span>';
-    cardClass = 'bg-amber-900/20 border-amber-700/50';
+    resultBadge = '<span class="badge-draw"><svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4"/></svg>Draw</span>';
+    cardClass = 'card bg-neon-yellow/10 border-neon-yellow/30';
   }
 
-  return '<a href="/games/' + game.id + '" class="block p-4 rounded-xl border ' + cardClass + ' hover:border-slate-600 transition-all duration-200"><div class="flex items-center justify-between"><div class="flex items-center gap-3"><span class="text-blue-400 font-medium">' + game.game_type + '</span>' + resultBadge + '</div><span class="text-slate-500 text-sm">' + new Date(game.played_at).toLocaleDateString() + '</span></div>' + (playerResult && playerResult.score !== null ? '<p class="text-slate-400 text-sm mt-2">Score: ' + playerResult.score + '</p>' : '') + '</a>';
-}).join('') + '</div></div>' : '<div class="bg-slate-800 rounded-xl border border-slate-700 p-8 text-center"><p class="text-slate-400">No games yet</p></div>'}
+  const gameIcon = game.game_type === 'Cricket' ? '🦗' : game.game_type === '301' || game.game_type === '501' ? '🎯' : game.game_type === 'Around the World' ? '🌍' : '🎲';
+
+  return '<a href="/games/' + game.id + '" class="block p-4 ' + cardClass + ' hover:border-neon-pink/50 transition-all duration-200"><div class="flex items-center justify-between"><div class="flex items-center gap-3"><span class="text-lg">' + gameIcon + '</span><span class="text-neon-blue font-pub-heading font-medium">' + game.game_type + '</span>' + resultBadge + '</div><span class="text-pub-chalk-accent text-sm">' + new Date(game.played_at).toLocaleDateString() + '</span></div>' + (playerResult && playerResult.score !== null ? '<p class="text-pub-chalk-accent text-sm mt-2">Score: <span class="font-pub-display text-neon-blue" style="font-size:10px;">' + playerResult.score + '</span></p>' : '') + '</a>';
+}).join('') + '</div></div>' : '<div class="card p-8 text-center"><div class="w-16 h-16 bg-pub-wood-medium rounded-full flex items-center justify-center mx-auto mb-4 border-2 border-pub-wood-light"><span class="text-2xl">🎯</span></div><p class="text-pub-chalk-accent">No games chalked up yet</p></div>'}
 ` }) %>

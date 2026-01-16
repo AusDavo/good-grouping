@@ -1,78 +1,83 @@
 <%- include('../layout', { body: `
-<div class="mb-8">
-  <h1 class="text-2xl font-bold text-slate-50">Record New Game</h1>
+<!-- Chalkboard Header -->
+<div class="mb-8 flex items-center gap-4">
+  <div class="w-12 h-12 rounded-full bg-pub-wood-medium flex items-center justify-center border-2 border-pub-wood-light">
+    <span class="text-2xl">📝</span>
+  </div>
+  <h1 class="text-2xl font-pub-heading font-bold text-pub-chalk-text">Chalk Up a Score</h1>
 </div>
 
-${typeof error !== 'undefined' && error ? '<div class="bg-rose-900/50 border border-rose-700 text-rose-200 px-4 py-3 rounded-lg mb-6">' + error + '</div>' : ''}
+${typeof error !== 'undefined' && error ? '<div class="alert alert-error mb-6">' + error + '</div>' : ''}
 
-<form action="/games" method="POST" id="game-form" class="bg-slate-800 rounded-2xl border border-slate-700 p-6 space-y-6">
+<form action="/games" method="POST" id="game-form" class="card p-6 space-y-6">
+  <!-- Date Field -->
   <div>
-    <label for="playedAt" class="block text-sm font-medium text-slate-300 mb-2">Date Played</label>
+    <label for="playedAt" class="block text-sm font-pub-heading text-pub-chalk-text mb-2 uppercase tracking-wider">Date Played</label>
     <input
       type="date"
       id="playedAt"
       name="playedAt"
       value="${new Date().toISOString().split('T')[0]}"
       required
-      class="w-full sm:w-auto px-4 py-2.5 bg-slate-700 border border-slate-600 rounded-xl text-slate-50 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200"
+      class="input w-full sm:w-auto"
     >
   </div>
 
+  <!-- Game Type Field -->
   <div>
-    <label for="gameType" class="block text-sm font-medium text-slate-300 mb-2">Game Type</label>
-    <select
-      id="gameType"
-      name="gameType"
-      class="w-full sm:w-auto px-4 py-2.5 bg-slate-700 border border-slate-600 rounded-xl text-slate-50 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200"
-    >
-      <option value="Cricket" selected>Cricket</option>
-      <option value="301">301</option>
-      <option value="501">501</option>
-      <option value="Around the World">Around the World</option>
-      <option value="Other">Other</option>
+    <label for="gameType" class="block text-sm font-pub-heading text-pub-chalk-text mb-2 uppercase tracking-wider">Game Type</label>
+    <select id="gameType" name="gameType" class="input w-full sm:w-auto">
+      <option value="Cricket" selected>🦗 Cricket</option>
+      <option value="301">🎯 301</option>
+      <option value="501">🎯 501</option>
+      <option value="Around the World">🌍 Around the World</option>
+      <option value="Other">🎲 Other</option>
     </select>
-    <p id="game-hint" class="mt-2 text-sm text-slate-400"></p>
+    <p id="game-hint" class="mt-2 text-sm text-pub-chalk-accent italic"></p>
   </div>
 
+  <!-- Players Section -->
   <div>
-    <label class="block text-sm font-medium text-slate-300 mb-3">Players</label>
+    <label class="block text-sm font-pub-heading text-pub-chalk-text mb-3 uppercase tracking-wider">Players</label>
     <div id="players-container" class="space-y-3">
-      <div class="player-row flex flex-wrap gap-3 items-center p-4 bg-slate-700/50 rounded-xl border border-slate-600">
-        <select name="players[0][userId]" required class="flex-1 min-w-[150px] px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-slate-50 focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm">
+      <!-- Player 1 -->
+      <div class="player-row flex flex-wrap gap-3 items-center p-4 bg-pub-brown-700/50 rounded-lg border-2 border-pub-wood-medium">
+        <select name="players[0][userId]" required class="flex-1 min-w-[150px] px-3 py-2 bg-pub-green-800/50 border-2 border-pub-wood-medium rounded text-pub-chalk-text focus:outline-none focus:border-neon-blue text-sm">
           <option value="">Select player...</option>
           ${allUsers.map(u => '<option value="' + u.id + '">' + u.name + '</option>').join('')}
         </select>
-        <input type="number" name="players[0][score]" placeholder="Score" class="score-input w-24 px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-slate-50 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm">
-        <label class="winner-checkbox inline-flex items-center gap-2 text-sm text-slate-300 cursor-pointer">
-          <input type="checkbox" name="players[0][isWinner]" value="true" class="winner-input w-4 h-4 rounded border-slate-600 bg-slate-700 text-emerald-500 focus:ring-emerald-500 focus:ring-offset-slate-800">
+        <input type="number" name="players[0][score]" placeholder="Score" class="score-input w-24 px-3 py-2 bg-pub-green-800/50 border-2 border-pub-wood-medium rounded text-pub-chalk-text placeholder-pub-chalk-accent focus:outline-none focus:border-neon-blue text-sm font-pub-display" style="font-size:12px;">
+        <label class="winner-checkbox inline-flex items-center gap-2 text-sm text-pub-chalk-text cursor-pointer">
+          <input type="checkbox" name="players[0][isWinner]" value="true" class="winner-input w-5 h-5 rounded border-pub-wood-medium bg-pub-green-800 text-neon-green focus:ring-neon-green focus:ring-offset-pub-brown-900">
           <span class="flex items-center gap-1">
-            <svg class="w-4 h-4 text-emerald-500" fill="currentColor" viewBox="0 0 20 20">
+            <svg class="w-4 h-4 text-neon-green" fill="currentColor" viewBox="0 0 20 20">
               <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"/>
             </svg>
             Winner
           </span>
         </label>
-        <input type="number" name="players[0][checkoutDarts]" placeholder="Darts" min="1" max="170" class="checkout-input w-20 px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-slate-50 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm" style="display:none">
+        <input type="number" name="players[0][checkoutDarts]" placeholder="Darts" min="1" max="170" class="checkout-input w-20 px-3 py-2 bg-pub-green-800/50 border-2 border-pub-wood-medium rounded text-neon-green placeholder-pub-chalk-accent focus:outline-none focus:border-neon-green text-sm font-pub-display" style="display:none; font-size:12px;">
       </div>
-      <div class="player-row flex flex-wrap gap-3 items-center p-4 bg-slate-700/50 rounded-xl border border-slate-600">
-        <select name="players[1][userId]" required class="flex-1 min-w-[150px] px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-slate-50 focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm">
+      <!-- Player 2 -->
+      <div class="player-row flex flex-wrap gap-3 items-center p-4 bg-pub-brown-700/50 rounded-lg border-2 border-pub-wood-medium">
+        <select name="players[1][userId]" required class="flex-1 min-w-[150px] px-3 py-2 bg-pub-green-800/50 border-2 border-pub-wood-medium rounded text-pub-chalk-text focus:outline-none focus:border-neon-blue text-sm">
           <option value="">Select player...</option>
           ${allUsers.map(u => '<option value="' + u.id + '">' + u.name + '</option>').join('')}
         </select>
-        <input type="number" name="players[1][score]" placeholder="Score" class="score-input w-24 px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-slate-50 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm">
-        <label class="winner-checkbox inline-flex items-center gap-2 text-sm text-slate-300 cursor-pointer">
-          <input type="checkbox" name="players[1][isWinner]" value="true" class="winner-input w-4 h-4 rounded border-slate-600 bg-slate-700 text-emerald-500 focus:ring-emerald-500 focus:ring-offset-slate-800">
+        <input type="number" name="players[1][score]" placeholder="Score" class="score-input w-24 px-3 py-2 bg-pub-green-800/50 border-2 border-pub-wood-medium rounded text-pub-chalk-text placeholder-pub-chalk-accent focus:outline-none focus:border-neon-blue text-sm font-pub-display" style="font-size:12px;">
+        <label class="winner-checkbox inline-flex items-center gap-2 text-sm text-pub-chalk-text cursor-pointer">
+          <input type="checkbox" name="players[1][isWinner]" value="true" class="winner-input w-5 h-5 rounded border-pub-wood-medium bg-pub-green-800 text-neon-green focus:ring-neon-green focus:ring-offset-pub-brown-900">
           <span class="flex items-center gap-1">
-            <svg class="w-4 h-4 text-emerald-500" fill="currentColor" viewBox="0 0 20 20">
+            <svg class="w-4 h-4 text-neon-green" fill="currentColor" viewBox="0 0 20 20">
               <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"/>
             </svg>
             Winner
           </span>
         </label>
-        <input type="number" name="players[1][checkoutDarts]" placeholder="Darts" min="1" max="170" class="checkout-input w-20 px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-slate-50 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm" style="display:none">
+        <input type="number" name="players[1][checkoutDarts]" placeholder="Darts" min="1" max="170" class="checkout-input w-20 px-3 py-2 bg-pub-green-800/50 border-2 border-pub-wood-medium rounded text-neon-green placeholder-pub-chalk-accent focus:outline-none focus:border-neon-green text-sm font-pub-display" style="display:none; font-size:12px;">
       </div>
     </div>
-    <button type="button" id="add-player" class="mt-3 inline-flex items-center gap-2 px-4 py-2 bg-slate-700 hover:bg-slate-600 text-slate-300 text-sm font-medium rounded-lg transition-colors duration-200">
+    <button type="button" id="add-player" class="mt-3 btn btn-secondary btn-sm inline-flex items-center gap-2">
       <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
       </svg>
@@ -80,26 +85,28 @@ ${typeof error !== 'undefined' && error ? '<div class="bg-rose-900/50 border bor
     </button>
   </div>
 
+  <!-- Notes Field -->
   <div>
-    <label for="notes" class="block text-sm font-medium text-slate-300 mb-2">Notes (optional)</label>
+    <label for="notes" class="block text-sm font-pub-heading text-pub-chalk-text mb-2 uppercase tracking-wider">Notes (optional)</label>
     <textarea
       id="notes"
       name="notes"
       rows="3"
-      placeholder="Any additional notes about the game..."
-      class="w-full px-4 py-3 bg-slate-700 border border-slate-600 rounded-xl text-slate-50 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 resize-none"
+      placeholder="Any memorable moments from the match..."
+      class="input resize-none"
     ></textarea>
   </div>
 
-  <div class="flex flex-col-reverse sm:flex-row gap-3 sm:justify-end pt-4 border-t border-slate-700">
-    <a href="/" class="inline-flex items-center justify-center px-5 py-2.5 bg-slate-700 hover:bg-slate-600 text-slate-300 font-medium rounded-xl transition-colors duration-200">
+  <!-- Form Actions -->
+  <div class="flex flex-col-reverse sm:flex-row gap-3 sm:justify-end pt-4 border-t-2 border-pub-wood-medium/50">
+    <a href="/" class="btn btn-secondary">
       Cancel
     </a>
-    <button type="submit" class="inline-flex items-center justify-center gap-2 px-5 py-2.5 bg-blue-600 hover:bg-blue-500 text-white font-medium rounded-xl transition-all duration-200 hover:shadow-glow-blue">
+    <button type="submit" class="btn btn-primary inline-flex items-center gap-2">
       <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
       </svg>
-      Save Game
+      Chalk It Up
     </button>
   </div>
 </form>
@@ -126,15 +133,15 @@ function updateFormForGameType(gameType) {
   const countdown = isCountdownGame(gameType);
   const hintEl = document.getElementById('game-hint');
 
-  // Update hint text
+  // Update hint text with pub-style language
   if (scoreBased) {
-    hintEl.textContent = 'Highest score wins. Draws are possible if scores are tied.';
+    hintEl.textContent = '🎯 Highest score takes the round. Draws are settled by a tied high score.';
   } else if (countdown) {
-    hintEl.textContent = 'First to zero wins. Select the winner and optionally record checkout darts.';
+    hintEl.textContent = '🎯 First to checkout wins. Mark the champion and their finishing darts.';
   } else if (gameType === 'Around the World') {
-    hintEl.textContent = 'First to complete all numbers wins. Select the winner.';
+    hintEl.textContent = '🌍 First to hit all numbers claims victory. Select the winner.';
   } else {
-    hintEl.textContent = 'Select the winner.';
+    hintEl.textContent = '🎲 Pick your poison and mark the winner!';
   }
 
   // Toggle visibility of score inputs, winner checkboxes, and checkout inputs
@@ -166,8 +173,8 @@ document.getElementById('add-player').addEventListener('click', function() {
   const scoreBased = isScoreBasedGame(gameType);
   const countdown = isCountdownGame(gameType);
   const row = document.createElement('div');
-  row.className = 'player-row flex flex-wrap gap-3 items-center p-4 bg-slate-700/50 rounded-xl border border-slate-600';
-  row.innerHTML = '<select name="players[' + playerCount + '][userId]" class="flex-1 min-w-[150px] px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-slate-50 focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"><option value="">Select player...</option>' + allUsers.map(u => '<option value="' + u.id + '">' + u.name + '</option>').join('') + '</select><input type="number" name="players[' + playerCount + '][score]" placeholder="Score" class="score-input w-24 px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-slate-50 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm" style="display:' + (scoreBased ? '' : 'none') + '"><label class="winner-checkbox inline-flex items-center gap-2 text-sm text-slate-300 cursor-pointer" style="display:' + (scoreBased ? 'none' : '') + '"><input type="checkbox" name="players[' + playerCount + '][isWinner]" value="true" class="winner-input w-4 h-4 rounded border-slate-600 bg-slate-700 text-emerald-500 focus:ring-emerald-500 focus:ring-offset-slate-800"><span class="flex items-center gap-1"><svg class="w-4 h-4 text-emerald-500" fill="currentColor" viewBox="0 0 20 20"><path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"/></svg>Winner</span></label><input type="number" name="players[' + playerCount + '][checkoutDarts]" placeholder="Darts" min="1" max="170" class="checkout-input w-20 px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-slate-50 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm" style="display:' + (countdown ? '' : 'none') + '"><button type="button" onclick="this.parentElement.remove()" class="p-2 text-slate-400 hover:text-rose-400 hover:bg-rose-900/30 rounded-lg transition-colors duration-200"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" /></svg></button>';
+  row.className = 'player-row flex flex-wrap gap-3 items-center p-4 bg-pub-brown-700/50 rounded-lg border-2 border-pub-wood-medium animate-chalk-write';
+  row.innerHTML = '<select name="players[' + playerCount + '][userId]" class="flex-1 min-w-[150px] px-3 py-2 bg-pub-green-800/50 border-2 border-pub-wood-medium rounded text-pub-chalk-text focus:outline-none focus:border-neon-blue text-sm"><option value="">Select player...</option>' + allUsers.map(u => '<option value="' + u.id + '">' + u.name + '</option>').join('') + '</select><input type="number" name="players[' + playerCount + '][score]" placeholder="Score" class="score-input w-24 px-3 py-2 bg-pub-green-800/50 border-2 border-pub-wood-medium rounded text-pub-chalk-text placeholder-pub-chalk-accent focus:outline-none focus:border-neon-blue text-sm font-pub-display" style="display:' + (scoreBased ? '' : 'none') + '; font-size:12px;"><label class="winner-checkbox inline-flex items-center gap-2 text-sm text-pub-chalk-text cursor-pointer" style="display:' + (scoreBased ? 'none' : '') + '"><input type="checkbox" name="players[' + playerCount + '][isWinner]" value="true" class="winner-input w-5 h-5 rounded border-pub-wood-medium bg-pub-green-800 text-neon-green focus:ring-neon-green focus:ring-offset-pub-brown-900"><span class="flex items-center gap-1"><svg class="w-4 h-4 text-neon-green" fill="currentColor" viewBox="0 0 20 20"><path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"/></svg>Winner</span></label><input type="number" name="players[' + playerCount + '][checkoutDarts]" placeholder="Darts" min="1" max="170" class="checkout-input w-20 px-3 py-2 bg-pub-green-800/50 border-2 border-pub-wood-medium rounded text-neon-green placeholder-pub-chalk-accent focus:outline-none focus:border-neon-green text-sm font-pub-display" style="display:' + (countdown ? '' : 'none') + '; font-size:12px;"><button type="button" onclick="this.parentElement.remove()" class="p-2 text-pub-chalk-accent hover:text-neon-orange hover:bg-neon-orange/10 rounded-lg transition-colors duration-200"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" /></svg></button>';
   container.appendChild(row);
   playerCount++;
 });

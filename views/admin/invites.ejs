@@ -1,8 +1,12 @@
 <%- include('../layout', { body: `
+<!-- Header -->
 <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-8">
-  <h1 class="text-2xl font-bold text-slate-50">Manage Invitations</h1>
+  <h1 class="text-2xl font-pub-heading font-bold text-pub-chalk-text flex items-center gap-3">
+    <span class="text-2xl">📬</span>
+    Manage Invitations
+  </h1>
   <form action="/admin/invites" method="POST">
-    <button type="submit" class="inline-flex items-center gap-2 bg-blue-600 hover:bg-blue-500 text-white font-medium py-2.5 px-5 rounded-xl transition-all duration-200 hover:shadow-glow-blue">
+    <button type="submit" class="btn btn-primary inline-flex items-center gap-2">
       <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
       </svg>
@@ -11,21 +15,24 @@
   </form>
 </div>
 
+<!-- Active Invitations -->
 <section class="mb-8">
-  <h2 class="text-lg font-semibold text-slate-200 mb-4 flex items-center gap-2">
-    <span class="w-2 h-2 bg-emerald-500 rounded-full"></span>
+  <h2 class="text-lg font-pub-heading font-semibold text-pub-chalk-text mb-4 flex items-center gap-2">
+    <span class="w-3 h-3 bg-neon-green rounded-full shadow-neon-green"></span>
     Active Invitations
   </h2>
-  ${activeInvites.length === 0 ? '<div class="bg-slate-800 rounded-xl border border-slate-700 p-6 text-center"><p class="text-slate-500 italic">No active invitations</p></div>' : '<div class="bg-slate-800 rounded-xl border border-slate-700 overflow-hidden"><div class="overflow-x-auto"><table class="w-full"><thead><tr class="border-b border-slate-700 bg-slate-800/50"><th class="text-left py-3 px-4 text-sm font-medium text-slate-400">Link</th><th class="text-left py-3 px-4 text-sm font-medium text-slate-400">Created By</th><th class="text-left py-3 px-4 text-sm font-medium text-slate-400">Expires</th><th class="text-left py-3 px-4 text-sm font-medium text-slate-400">Actions</th></tr></thead><tbody>' + activeInvites.map(inv => '<tr class="border-b border-slate-700/50 hover:bg-slate-700/30 transition-colors"><td class="py-3 px-4"><div class="flex items-center gap-2"><input type="text" readonly value="' + baseUrl + '/register?token=' + inv.token + '" class="w-40 px-2 py-1 bg-slate-700 border border-slate-600 rounded text-xs text-slate-300 truncate" onclick="this.select()"><button type="button" onclick="navigator.clipboard.writeText(this.previousElementSibling.value)" class="p-2 bg-slate-700 hover:bg-slate-600 text-slate-400 hover:text-slate-200 rounded-lg transition-colors"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" /></svg></button></div></td><td class="py-3 px-4 text-slate-300 text-sm">' + inv.created_by_name + '</td><td class="py-3 px-4 text-slate-400 text-sm">' + new Date(inv.expires_at).toLocaleDateString() + '</td><td class="py-3 px-4"><form action="/admin/invites/' + inv.id + '/revoke" method="POST" class="inline"><button type="submit" class="px-3 py-1.5 bg-rose-600 hover:bg-rose-500 text-white text-xs font-medium rounded-lg transition-colors">Revoke</button></form></td></tr>').join('') + '</tbody></table></div></div>'}
+  ${activeInvites.length === 0 ? '<div class="card p-6 text-center"><p class="text-pub-chalk-accent italic">No active invitations</p></div>' : '<div class="card overflow-hidden"><div class="overflow-x-auto"><table class="pub-table"><thead><tr><th>Invite Link</th><th>Created By</th><th>Expires</th><th>Actions</th></tr></thead><tbody>' + activeInvites.map(inv => '<tr><td><div class="flex items-center gap-2"><input type="text" readonly value="' + baseUrl + '/register?token=' + inv.token + '" class="w-40 px-2 py-1 bg-pub-green-800/50 border border-pub-wood-medium rounded text-xs text-pub-chalk-text truncate" onclick="this.select()"><button type="button" onclick="navigator.clipboard.writeText(this.previousElementSibling.value); this.innerHTML=\\'<span class=text-neon-green>Copied!</span>\\'; setTimeout(() => this.innerHTML=\\'<svg class=w-4.h-4 fill=none stroke=currentColor viewBox=0.0.24.24><path stroke-linecap=round stroke-linejoin=round stroke-width=2 d=M8.16H6a2.2.0.01-2-2V6a2.2.0.012-2h8a2.2.0.012.2v2m-6.12h8a2.2.0.002-2v-8a2.2.0.00-2-2h-8a2.2.0.00-2.2v8a2.2.0.002.2z /></svg>\\', 1500)" class="p-2 bg-pub-green-700 hover:bg-pub-green-600 text-pub-chalk-accent hover:text-neon-blue rounded-lg transition-colors"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" /></svg></button></div></td><td class="text-pub-chalk-text text-sm">' + inv.created_by_name + '</td><td class="text-pub-chalk-accent text-sm">' + new Date(inv.expires_at).toLocaleDateString() + '</td><td><form action="/admin/invites/' + inv.id + '/revoke" method="POST" class="inline"><button type="submit" class="btn btn-danger btn-sm">Revoke</button></form></td></tr>').join('') + '</tbody></table></div></div>'}
 </section>
 
+<!-- Used Invitations -->
 <section class="mb-8">
-  <h2 class="text-lg font-semibold text-slate-200 mb-4 flex items-center gap-2">
-    <span class="w-2 h-2 bg-blue-500 rounded-full"></span>
+  <h2 class="text-lg font-pub-heading font-semibold text-pub-chalk-text mb-4 flex items-center gap-2">
+    <span class="w-3 h-3 bg-neon-blue rounded-full"></span>
     Used Invitations
   </h2>
-  ${usedInvites.length === 0 ? '<div class="bg-slate-800 rounded-xl border border-slate-700 p-6 text-center"><p class="text-slate-500 italic">No used invitations</p></div>' : '<div class="bg-slate-800 rounded-xl border border-slate-700 overflow-hidden"><div class="overflow-x-auto"><table class="w-full"><thead><tr class="border-b border-slate-700 bg-slate-800/50"><th class="text-left py-3 px-4 text-sm font-medium text-slate-400">Used By</th><th class="text-left py-3 px-4 text-sm font-medium text-slate-400">Created By</th><th class="text-left py-3 px-4 text-sm font-medium text-slate-400">Used At</th></tr></thead><tbody>' + usedInvites.map(inv => '<tr class="border-b border-slate-700/50"><td class="py-3 px-4 text-slate-200 font-medium text-sm">' + (inv.used_by_name || 'Unknown') + '</td><td class="py-3 px-4 text-slate-400 text-sm">' + inv.created_by_name + '</td><td class="py-3 px-4 text-slate-400 text-sm">' + new Date(inv.used_at).toLocaleDateString() + '</td></tr>').join('') + '</tbody></table></div></div>'}
+  ${usedInvites.length === 0 ? '<div class="card p-6 text-center"><p class="text-pub-chalk-accent italic">No used invitations</p></div>' : '<div class="card overflow-hidden"><div class="overflow-x-auto"><table class="pub-table"><thead><tr><th>Used By</th><th>Created By</th><th>Used At</th></tr></thead><tbody>' + usedInvites.map(inv => '<tr><td class="text-pub-chalk-text font-medium text-sm">' + (inv.used_by_name || 'Unknown') + '</td><td class="text-pub-chalk-accent text-sm">' + inv.created_by_name + '</td><td class="text-pub-chalk-accent text-sm">' + new Date(inv.used_at).toLocaleDateString() + '</td></tr>').join('') + '</tbody></table></div></div>'}
 </section>
 
-${expiredInvites.length > 0 ? '<section class="mb-8"><h2 class="text-lg font-semibold text-slate-200 mb-4 flex items-center gap-2"><span class="w-2 h-2 bg-slate-500 rounded-full"></span>Expired Invitations</h2><div class="bg-slate-800 rounded-xl border border-slate-700 overflow-hidden"><div class="overflow-x-auto"><table class="w-full"><thead><tr class="border-b border-slate-700 bg-slate-800/50"><th class="text-left py-3 px-4 text-sm font-medium text-slate-400">Created By</th><th class="text-left py-3 px-4 text-sm font-medium text-slate-400">Expired At</th></tr></thead><tbody>' + expiredInvites.map(inv => '<tr class="border-b border-slate-700/50"><td class="py-3 px-4 text-slate-400 text-sm">' + inv.created_by_name + '</td><td class="py-3 px-4 text-slate-500 text-sm">' + new Date(inv.expires_at).toLocaleDateString() + '</td></tr>').join('') + '</tbody></table></div></div></section>' : ''}
+<!-- Expired Invitations -->
+${expiredInvites.length > 0 ? '<section class="mb-8"><h2 class="text-lg font-pub-heading font-semibold text-pub-chalk-text mb-4 flex items-center gap-2"><span class="w-3 h-3 bg-pub-chalk-accent rounded-full"></span>Expired Invitations</h2><div class="card overflow-hidden opacity-60"><div class="overflow-x-auto"><table class="pub-table"><thead><tr><th>Created By</th><th>Expired At</th></tr></thead><tbody>' + expiredInvites.map(inv => '<tr><td class="text-pub-chalk-accent text-sm">' + inv.created_by_name + '</td><td class="text-pub-chalk-accent text-sm">' + new Date(inv.expires_at).toLocaleDateString() + '</td></tr>').join('') + '</tbody></table></div></div></section>' : ''}
 ` }) %>

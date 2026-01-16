@@ -1,7 +1,13 @@
 <%- include('layout', { body: `
+<!-- Chalkboard Header -->
 <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-8">
-  <h1 class="text-2xl font-bold text-slate-50">Recent Games</h1>
-  <a href="/games/new" class="inline-flex items-center justify-center gap-2 bg-blue-600 hover:bg-blue-500 text-white font-medium py-2.5 px-5 rounded-xl transition-all duration-200 hover:shadow-glow-blue">
+  <div class="flex items-center gap-3">
+    <div class="w-10 h-10 rounded-full bg-pub-wood-medium flex items-center justify-center border-2 border-pub-wood-light">
+      <span class="text-xl">🎯</span>
+    </div>
+    <h1 class="text-2xl font-pub-heading font-bold text-pub-chalk-text">Recent Games</h1>
+  </div>
+  <a href="/games/new" class="btn btn-primary inline-flex items-center gap-2">
     <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
       <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
     </svg>
@@ -9,16 +15,15 @@
   </a>
 </div>
 
-${games.length === 0 ? '<div class="bg-slate-800 rounded-2xl border border-slate-700 p-12 text-center"><div class="w-20 h-20 bg-slate-700 rounded-full flex items-center justify-center mx-auto mb-6"><svg class="w-10 h-10 text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" /></svg></div><p class="text-slate-400 text-lg mb-2">No games recorded yet</p><p class="text-slate-500">Be the first to record a game!</p></div>' : '<div class="space-y-4">' + games.map(game => {
+${games.length === 0 ? '<div class="card p-12 text-center"><div class="w-20 h-20 bg-pub-wood-medium rounded-full flex items-center justify-center mx-auto mb-6 border-4 border-pub-wood-light"><span class="text-4xl">🎯</span></div><p class="text-pub-chalk-text text-lg font-pub-heading mb-2">No games on the board yet</p><p class="text-pub-chalk-accent">Be the first to chalk up a score!</p></div>' : '<div class="space-y-4">' + games.map(game => {
   const confirmedCount = game.players.filter(p => p.confirmed_at).length;
   const totalPlayers = game.players.length;
   const allConfirmed = confirmedCount === totalPlayers;
   const confirmationStatus = allConfirmed
-    ? '<span class="inline-flex items-center gap-1 text-emerald-400 text-xs"><svg class="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/></svg>Confirmed</span>'
-    : '<span class="text-slate-500 text-xs">' + confirmedCount + '/' + totalPlayers + ' confirmed</span>';
+    ? '<span class="badge-winner"><svg class="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/></svg>Confirmed</span>'
+    : '<span class="text-pub-chalk-accent text-xs">' + confirmedCount + '/' + totalPlayers + ' confirmed</span>';
 
   // Determine if this is a draw (score-based game with no winner and tied high scores)
-  // Only Cricket uses score-based winner detection; 301/501 are first-to-zero games
   const scoreBasedGames = ['Cricket'];
   const isScoreBased = scoreBasedGames.includes(game.game_type);
   const hasWinner = game.players.some(p => p.is_winner);
@@ -39,42 +44,45 @@ ${games.length === 0 ? '<div class="bg-slate-800 rounded-2xl border border-slate
     return 0;
   });
 
-  // Create avatar stack with winner elevated
-  const avatarStack = '<div class="flex items-center mb-4"><div class="flex -space-x-3">' + sortedPlayers.map((p, idx) => {
+  // Create avatar stack with winner elevated - polaroid style
+  const avatarStack = '<div class="flex items-center mb-4"><div class="flex -space-x-2">' + sortedPlayers.map((p, idx) => {
     const isWinnerPlayer = p.is_winner;
     const isDrawPlayer = isDraw && p.score === maxScore;
     const zIndex = sortedPlayers.length - idx;
     const elevation = isWinnerPlayer ? 'transform -translate-y-1' : '';
-    const ring = isWinnerPlayer ? 'ring-2 ring-emerald-500' : isDrawPlayer ? 'ring-2 ring-amber-500' : 'ring-2 ring-slate-600';
+    const ring = isWinnerPlayer ? 'ring-2 ring-neon-green shadow-neon-green' : isDrawPlayer ? 'ring-2 ring-neon-yellow' : 'ring-2 ring-pub-wood-medium';
 
     const avatar = p.avatar_url
-      ? '<img src="' + p.avatar_url + '" alt="" class="w-10 h-10 rounded-full object-cover ' + ring + ' ' + elevation + ' bg-slate-700">'
-      : '<div class="w-10 h-10 rounded-full bg-gradient-to-br from-blue-500 to-blue-700 flex items-center justify-center ' + ring + ' ' + elevation + '"><span class="text-sm font-semibold text-white">' + p.name.charAt(0).toUpperCase() + '</span></div>';
+      ? '<img src="' + p.avatar_url + '" alt="" class="w-10 h-10 rounded-full object-cover ' + ring + ' ' + elevation + ' bg-pub-brown-700">'
+      : '<div class="w-10 h-10 rounded-full bg-pub-green-700 flex items-center justify-center ' + ring + ' ' + elevation + '"><span class="text-sm font-bold text-neon-green">' + p.name.charAt(0).toUpperCase() + '</span></div>';
 
     return '<a href="/users/' + p.user_id + '" class="relative hover:z-50 transition-transform hover:scale-110" style="z-index:' + zIndex + '" title="' + p.name + '">' + avatar + '</a>';
   }).join('') + '</div></div>';
 
-  // Player details with clickable names
+  // Player details with pub styling
   const playerDetails = '<div class="flex flex-wrap gap-2 mb-4">' + game.players.map(p => {
     const isDrawPlayer = isDraw && p.score === maxScore;
-    let playerClass = 'bg-slate-700 text-slate-300';
+    let playerClass = 'bg-pub-brown-700 text-pub-chalk-text border border-pub-wood-medium';
     let badge = '';
     let checkoutInfo = '';
 
     if (p.is_winner) {
-      playerClass = 'bg-emerald-900/50 border border-emerald-700/50 text-emerald-200';
-      badge = '<span class="inline-flex items-center gap-1 bg-emerald-600 text-white text-xs px-2 py-0.5 rounded-full font-medium"><svg class="w-3 h-3" fill="currentColor" viewBox="0 0 20 20"><path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" /></svg>Winner</span>';
+      playerClass = 'bg-neon-green/20 border border-neon-green/50 text-neon-green';
+      badge = '<span class="badge-winner ml-1"><svg class="w-3 h-3" fill="currentColor" viewBox="0 0 20 20"><path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" /></svg>Winner</span>';
       if (p.checkout_darts) {
-        checkoutInfo = '<span class="text-emerald-300 text-xs">' + p.checkout_darts + ' darts</span>';
+        checkoutInfo = '<span class="text-neon-green text-xs ml-1 font-pub-display" style="font-size:8px;">' + p.checkout_darts + ' darts</span>';
       }
     } else if (isDrawPlayer) {
-      playerClass = 'bg-amber-900/50 border border-amber-700/50 text-amber-200';
-      badge = '<span class="inline-flex items-center gap-1 bg-amber-600 text-white text-xs px-2 py-0.5 rounded-full font-medium"><svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4"/></svg>Draw</span>';
+      playerClass = 'bg-neon-yellow/20 border border-neon-yellow/50 text-neon-yellow';
+      badge = '<span class="badge-draw ml-1"><svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4"/></svg>Draw</span>';
     }
 
-    return '<div class="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm ' + playerClass + '"><a href="/users/' + p.user_id + '" class="font-medium hover:underline">' + p.name + '</a>' + (p.score !== null ? '<span class="text-slate-400">' + p.score + '</span>' : '') + badge + checkoutInfo + '</div>';
+    return '<div class="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm ' + playerClass + '"><a href="/users/' + p.user_id + '" class="font-medium hover:underline">' + p.name + '</a>' + (p.score !== null ? '<span class="font-pub-display text-xs" style="font-size:10px;">' + p.score + '</span>' : '') + badge + checkoutInfo + '</div>';
   }).join('') + '</div>';
 
-  return '<div class="bg-slate-800 rounded-xl border border-slate-700 p-5 hover:border-slate-600 hover:shadow-lg transition-all duration-200 group"><div class="flex items-center justify-between mb-4"><span class="inline-flex items-center gap-2 text-blue-400 font-semibold"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z" /></svg>' + game.game_type + '</span><span class="text-slate-500 text-sm">' + new Date(game.played_at).toLocaleDateString() + '</span></div>' + avatarStack + playerDetails + (game.notes ? '<p class="text-slate-400 text-sm italic mb-4 line-clamp-2">' + game.notes + '</p>' : '') + '<div class="flex items-center justify-between pt-4 border-t border-slate-700"><div class="flex items-center gap-4"><span class="text-slate-500 text-xs">Posted by ' + game.created_by_name + '</span>' + confirmationStatus + '</div><a href="/games/' + game.id + '" class="inline-flex items-center gap-1.5 text-sm text-slate-400 hover:text-blue-400 transition-colors duration-200">View details<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" /></svg></a></div></div>';
+  // Game type icon mapping
+  const gameTypeIcon = game.game_type === 'Cricket' ? '🦗' : game.game_type === '301' || game.game_type === '501' ? '🎯' : game.game_type === 'Around the World' ? '🌍' : '🎲';
+
+  return '<div class="card p-5 hover:border-neon-pink/30 hover:shadow-neon-pink-sm transition-all duration-200 group"><div class="flex items-center justify-between mb-4"><span class="inline-flex items-center gap-2 text-neon-blue font-pub-heading font-semibold"><span class="text-lg">' + gameTypeIcon + '</span>' + game.game_type + '</span><span class="text-pub-chalk-accent text-sm">' + new Date(game.played_at).toLocaleDateString() + '</span></div>' + avatarStack + playerDetails + (game.notes ? '<div class="speech-bubble mb-4"><p class="text-pub-chalk-text text-sm italic line-clamp-2">"' + game.notes + '"</p></div>' : '') + '<div class="flex items-center justify-between pt-4 border-t-2 border-pub-wood-medium/50"><div class="flex items-center gap-4"><span class="text-pub-chalk-accent text-xs">Chalked by ' + game.created_by_name + '</span>' + confirmationStatus + '</div><a href="/games/' + game.id + '" class="inline-flex items-center gap-1.5 text-sm text-pub-chalk-accent hover:text-neon-pink transition-colors duration-200 font-pub-heading">View details<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" /></svg></a></div></div>';
 }).join('') + '</div>'}
 ` }) %>
