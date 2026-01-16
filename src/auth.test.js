@@ -49,7 +49,7 @@ describe('auth.js', () => {
       passkeys.findByUserId.mockReturnValue([]);
       generateRegistrationOptions.mockResolvedValue({
         challenge: 'mock-challenge',
-        rp: { name: 'Dart Score Sharing', id: 'localhost' },
+        rp: { name: 'Good Grouping', id: 'localhost' },
         user: { id: 'encoded-id', name: 'TestUser', displayName: 'TestUser' },
       });
 

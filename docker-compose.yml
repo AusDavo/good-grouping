@@ -11,7 +11,7 @@ services:
       - NODE_ENV=production
       - PORT=3000
       - SESSION_SECRET=${SESSION_SECRET:-change-this-to-a-secure-random-string}
-      - RP_NAME=${RP_NAME:-Dart Score Sharing}
+      - RP_NAME=${RP_NAME:-Good Grouping}
       - RP_ID=${RP_ID:-darts.dpinkerton.com}
       - ORIGIN=${ORIGIN:-https://darts.dpinkerton.com}
       - BASE_URL=${BASE_URL:-https://darts.dpinkerton.com}

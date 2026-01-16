@@ -7,7 +7,7 @@ const {
 const { passkeys, users } = require('./db');
 
 // Configuration from environment
-const rpName = process.env.RP_NAME || 'Dart Score Sharing';
+const rpName = process.env.RP_NAME || 'Good Grouping';
 const rpID = process.env.RP_ID || 'localhost';
 const origin = process.env.ORIGIN || 'http://localhost:3000';
 

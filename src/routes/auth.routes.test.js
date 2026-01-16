@@ -233,7 +233,7 @@ describe('Auth Routes', () => {
     it('should return registration options for valid request', async () => {
       const mockOptions = {
         challenge: 'reg-challenge-base64url',
-        rp: { name: 'Dart Score Sharing', id: 'localhost' },
+        rp: { name: 'Good Grouping', id: 'localhost' },
         user: { id: 'encoded-id', name: 'NewUser', displayName: 'NewUser' },
         pubKeyCredParams: [{ type: 'public-key', alg: -7 }],
         timeout: 60000,

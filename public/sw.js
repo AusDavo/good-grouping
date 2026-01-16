@@ -16,7 +16,7 @@ self.addEventListener('push', function(event) {
     };
 
     event.waitUntil(
-      self.registration.showNotification(data.title || 'Dart Scores', options)
+      self.registration.showNotification(data.title || 'Good Grouping', options)
     );
   } catch (error) {
     console.error('Push event error:', error);

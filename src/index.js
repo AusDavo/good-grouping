@@ -68,7 +68,7 @@ app.get('/', (req, res) => {
   const recentGames = games.findRecent(20);
 
   res.render('index', {
-    title: 'Dart Scores',
+    title: 'Home',
     games: recentGames,
   });
 });
