@@ -106,6 +106,13 @@ try {
   // Column already exists, ignore
 }
 
+// Migration: Add checkout_darts column to game_players if it doesn't exist
+try {
+  db.exec('ALTER TABLE game_players ADD COLUMN checkout_darts INTEGER');
+} catch (e) {
+  // Column already exists, ignore
+}
+
 // User queries
 const userQueries = {
   create: db.prepare(`
@@ -194,18 +201,28 @@ const gameQueries = {
     LIMIT ?
   `),
 
+  findByUserId: db.prepare(`
+    SELECT DISTINCT g.*, u.name as created_by_name
+    FROM games g
+    JOIN users u ON g.created_by = u.id
+    JOIN game_players gp ON g.id = gp.game_id
+    WHERE gp.user_id = ?
+    ORDER BY g.played_at DESC
+    LIMIT ?
+  `),
+
   delete: db.prepare('DELETE FROM games WHERE id = ?'),
 };
 
 // Game player queries
 const gamePlayerQueries = {
   create: db.prepare(`
-    INSERT INTO game_players (id, game_id, user_id, score, position, is_winner, confirmed_at)
-    VALUES (?, ?, ?, ?, ?, ?, ?)
+    INSERT INTO game_players (id, game_id, user_id, score, position, is_winner, confirmed_at, checkout_darts)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?)
   `),
 
   findByGameId: db.prepare(`
-    SELECT gp.*, u.name
+    SELECT gp.*, u.name, u.avatar_url
     FROM game_players gp
     JOIN users u ON gp.user_id = u.id
     WHERE gp.game_id = ?
@@ -351,7 +368,8 @@ const games = {
           player.score || null,
           player.position || null,
           player.isWinner ? 1 : 0,
-          confirmedAt
+          confirmedAt,
+          player.checkoutDarts || null
         );
       }
 
@@ -372,6 +390,14 @@ const games = {
   findRecent(limit = 20) {
     const recentGames = gameQueries.findRecent.all(limit);
     return recentGames.map(game => {
+      game.players = gamePlayerQueries.findByGameId.all(game.id);
+      return game;
+    });
+  },
+
+  findByUserId(userId, limit = 50) {
+    const userGames = gameQueries.findByUserId.all(userId, limit);
+    return userGames.map(game => {
       game.players = gamePlayerQueries.findByGameId.all(game.id);
       return game;
     });

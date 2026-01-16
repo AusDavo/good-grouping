@@ -20,7 +20,7 @@ router.get('/new', (req, res) => {
 });
 
 // Game types where highest score wins (draws possible if tied)
-const SCORE_BASED_GAMES = ['Cricket', '301', '501'];
+const SCORE_BASED_GAMES = ['Cricket'];
 
 // Create new game
 router.post('/', (req, res) => {
@@ -44,6 +44,7 @@ router.post('/', (req, res) => {
       score: p.score ? parseInt(p.score, 10) : null,
       position: index + 1,
       isWinner: p.isWinner === 'true' || p.isWinner === true,
+      checkoutDarts: p.checkoutDarts ? parseInt(p.checkoutDarts, 10) : null,
     })).filter(p => p.userId);
 
     // For score-based games, auto-determine winner by highest score

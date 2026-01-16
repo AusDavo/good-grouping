@@ -21,6 +21,8 @@ app.set('views', path.join(__dirname, '../views'));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(express.static(path.join(__dirname, '../public')));
+// Serve uploads from data directory (for persistence across container restarts)
+app.use('/uploads', express.static(path.join(__dirname, '../data/uploads')));
 
 // Session middleware
 app.use(session({
@@ -52,12 +54,14 @@ const adminRoutes = require('./routes/admin');
 const gamesRoutes = require('./routes/games');
 const notificationsRoutes = require('./routes/notifications');
 const pushRoutes = require('./routes/push');
+const usersRoutes = require('./routes/users');
 
 app.use('/', authRoutes);
 app.use('/admin', adminRoutes);
 app.use('/games', gamesRoutes);
 app.use('/notifications', notificationsRoutes);
 app.use('/push', pushRoutes);
+app.use('/users', usersRoutes);
 
 // Home page - game feed
 app.get('/', (req, res) => {

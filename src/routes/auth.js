@@ -4,8 +4,8 @@ const path = require('path');
 const fs = require('fs');
 const { users, invitations } = require('../db');
 
-// Configure multer for avatar uploads
-const uploadDir = path.join(__dirname, '../../public/uploads/avatars');
+// Configure multer for avatar uploads (store in data directory for persistence)
+const uploadDir = path.join(__dirname, '../../data/uploads/avatars');
 if (!fs.existsSync(uploadDir)) {
   fs.mkdirSync(uploadDir, { recursive: true });
 }
@@ -325,7 +325,7 @@ router.post('/profile/avatar', requireAuth, (req, res) => {
 router.post('/profile/avatar/remove', requireAuth, (req, res) => {
   // Delete the file if it exists
   if (req.user.avatar_url) {
-    const filePath = path.join(__dirname, '../../public', req.user.avatar_url);
+    const filePath = path.join(__dirname, '../../data', req.user.avatar_url);
     if (fs.existsSync(filePath)) {
       fs.unlinkSync(filePath);
     }
