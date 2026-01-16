@@ -45,18 +45,31 @@ async function verifyAndStoreRegistration(user, response, expectedChallenge) {
   });
 
   if (verification.verified && verification.registrationInfo) {
-    // v10 API: credential info is under registrationInfo.credential
-    const { credential } = verification.registrationInfo;
+    const { registrationInfo } = verification;
 
-    // credential.id is already base64url in v10
-    const credentialIdBase64 = credential.id;
-    const publicKeyBase64 = Buffer.from(credential.publicKey).toString('base64');
+    // Handle both v10 (credential object) and v9 (flat properties) API structures
+    let credentialIdBase64, publicKeyBase64, counter;
+
+    if (registrationInfo.credential) {
+      // v10 API: credential info is under registrationInfo.credential
+      credentialIdBase64 = registrationInfo.credential.id;
+      publicKeyBase64 = Buffer.from(registrationInfo.credential.publicKey).toString('base64');
+      counter = registrationInfo.credential.counter;
+    } else if (registrationInfo.credentialID) {
+      // v9 API fallback: flat properties on registrationInfo
+      credentialIdBase64 = Buffer.from(registrationInfo.credentialID).toString('base64url');
+      publicKeyBase64 = Buffer.from(registrationInfo.credentialPublicKey).toString('base64');
+      counter = registrationInfo.counter;
+    } else {
+      console.error('Unknown registrationInfo structure:', Object.keys(registrationInfo));
+      return { verified: false };
+    }
 
     passkeys.create(
       user.id,
       credentialIdBase64,
       publicKeyBase64,
-      credential.counter,
+      counter,
       response.response.transports
     );
 
