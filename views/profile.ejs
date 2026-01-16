@@ -1,0 +1,18 @@
+<%- include('layout', { body: `
+<div class="auth-container">
+  <h1>Profile</h1>
+
+  ${typeof error !== 'undefined' && error ? `<div class="alert alert-error">${error}</div>` : ''}
+  ${typeof success !== 'undefined' && success ? `<div class="alert alert-success">${success}</div>` : ''}
+
+  <form method="POST" action="/profile" class="auth-form">
+    <div class="form-group">
+      <label for="name">Name</label>
+      <input type="text" id="name" name="name" value="${user.name}" required minlength="2" maxlength="50">
+      <small>This is how you appear to others</small>
+    </div>
+
+    <button type="submit" class="btn btn-primary btn-block">Save Changes</button>
+  </form>
+</div>
+` }) %>

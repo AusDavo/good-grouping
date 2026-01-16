@@ -13,7 +13,7 @@ const session = require('express-session');
 jest.mock('../auth', () => ({
   generateRegistrationOptionsForUser: jest.fn(),
   verifyAndStoreRegistration: jest.fn(),
-  generateAuthenticationOptionsForUser: jest.fn(),
+  generateConditionalAuthenticationOptions: jest.fn(),
   verifyAuthentication: jest.fn(),
 }));
 
@@ -40,7 +40,7 @@ jest.mock('../middleware/auth', () => ({
 const {
   generateRegistrationOptionsForUser,
   verifyAndStoreRegistration,
-  generateAuthenticationOptionsForUser,
+  generateConditionalAuthenticationOptions,
   verifyAuthentication,
 } = require('../auth');
 const { users, invitations } = require('../db');
@@ -77,74 +77,30 @@ describe('Auth Routes', () => {
     app = createTestApp();
   });
 
-  describe('POST /login/options', () => {
-    it('should return 400 if username is not provided', async () => {
-      const response = await request(app)
-        .post('/login/options')
-        .send({})
-        .expect(400);
-
-      expect(response.body.error).toBe('Name is required');
-    });
-
-    it('should return 400 if user is not found', async () => {
-      generateAuthenticationOptionsForUser.mockResolvedValue({
-        error: 'User not found',
-      });
-
-      const response = await request(app)
-        .post('/login/options')
-        .send({ username: 'nonexistent' })
-        .expect(400);
-
-      expect(response.body.error).toBe('User not found');
-    });
-
-    it('should return 400 if user has no passkeys', async () => {
-      generateAuthenticationOptionsForUser.mockResolvedValue({
-        error: 'No passkeys registered for this user',
-      });
-
-      const response = await request(app)
-        .post('/login/options')
-        .send({ username: 'userWithNoPasskeys' })
-        .expect(400);
-
-      expect(response.body.error).toBe('No passkeys registered for this user');
-    });
-
-    it('should return authentication options on success', async () => {
+  describe('GET /login/conditional-options', () => {
+    it('should return authentication options for passkey login', async () => {
       const mockOptions = {
         challenge: 'test-challenge-base64url',
         timeout: 60000,
         rpId: 'localhost',
-        allowCredentials: [
-          { id: 'Y3JlZGVudGlhbC0x', transports: ['internal'] },
-        ],
         userVerification: 'preferred',
       };
-      const mockUser = { id: 'user-123', name: 'TestUser' };
 
-      generateAuthenticationOptionsForUser.mockResolvedValue({
-        options: mockOptions,
-        user: mockUser,
-      });
+      generateConditionalAuthenticationOptions.mockResolvedValue(mockOptions);
 
       const response = await request(app)
-        .post('/login/options')
-        .send({ username: 'TestUser' })
+        .get('/login/conditional-options')
         .expect(200);
 
       expect(response.body).toEqual(mockOptions);
-      expect(generateAuthenticationOptionsForUser).toHaveBeenCalledWith('TestUser');
+      expect(generateConditionalAuthenticationOptions).toHaveBeenCalled();
     });
 
     it('should handle server errors gracefully', async () => {
-      generateAuthenticationOptionsForUser.mockRejectedValue(new Error('Database error'));
+      generateConditionalAuthenticationOptions.mockRejectedValue(new Error('Database error'));
 
       const response = await request(app)
-        .post('/login/options')
-        .send({ username: 'TestUser' })
+        .get('/login/conditional-options')
         .expect(500);
 
       expect(response.body.error).toBe('Failed to generate authentication options');
@@ -165,21 +121,17 @@ describe('Auth Routes', () => {
       const mockUser = { id: 'user-123', name: 'TestUser' };
       const mockOptions = {
         challenge: 'test-challenge',
-        allowCredentials: [],
+        userVerification: 'preferred',
       };
 
       // First, set up the session by requesting options
-      generateAuthenticationOptionsForUser.mockResolvedValue({
-        options: mockOptions,
-        user: mockUser,
-      });
+      generateConditionalAuthenticationOptions.mockResolvedValue(mockOptions);
 
       const agent = request.agent(app);
 
-      await agent.post('/login/options').send({ username: 'TestUser' }).expect(200);
+      await agent.get('/login/conditional-options').expect(200);
 
-      // Now verify
-      users.findById.mockReturnValue(mockUser);
+      // Now verify - user is looked up from credential in conditional flow
       verifyAuthentication.mockResolvedValue({
         verified: true,
         user: mockUser,
@@ -205,49 +157,22 @@ describe('Auth Routes', () => {
       expect(verifyResponse.body.redirect).toBe('/');
     });
 
-    it('should return 400 if user not found during verification', async () => {
-      const mockOptions = { challenge: 'test-challenge', allowCredentials: [] };
-      const mockUser = { id: 'user-123', name: 'TestUser' };
-
-      generateAuthenticationOptionsForUser.mockResolvedValue({
-        options: mockOptions,
-        user: mockUser,
-      });
-
-      const agent = request.agent(app);
-      await agent.post('/login/options').send({ username: 'TestUser' }).expect(200);
-
-      users.findById.mockReturnValue(null);
-
-      const response = await agent
-        .post('/login/verify')
-        .send({ response: {} })
-        .expect(400);
-
-      expect(response.body.error).toBe('User not found');
-    });
-
     it('should return 400 if authentication verification fails', async () => {
-      const mockOptions = { challenge: 'test-challenge', allowCredentials: [] };
-      const mockUser = { id: 'user-123', name: 'TestUser' };
+      const mockOptions = { challenge: 'test-challenge', userVerification: 'preferred' };
 
-      generateAuthenticationOptionsForUser.mockResolvedValue({
-        options: mockOptions,
-        user: mockUser,
-      });
+      generateConditionalAuthenticationOptions.mockResolvedValue(mockOptions);
 
       const agent = request.agent(app);
-      await agent.post('/login/options').send({ username: 'TestUser' }).expect(200);
+      await agent.get('/login/conditional-options').expect(200);
 
-      users.findById.mockReturnValue(mockUser);
-      verifyAuthentication.mockResolvedValue({ verified: false });
+      verifyAuthentication.mockResolvedValue({ verified: false, error: 'Passkey not found' });
 
       const response = await agent
         .post('/login/verify')
         .send({ response: {} })
         .expect(400);
 
-      expect(response.body.error).toBe('Authentication failed');
+      expect(response.body.error).toBe('Passkey not found');
     });
   });
 
@@ -553,24 +478,20 @@ describe('Auth Routes', () => {
     });
 
     it('should handle concurrent authentication attempts via session isolation', async () => {
-      const mockOptions = { challenge: 'challenge-1' };
+      const mockOptions = { challenge: 'challenge-1', userVerification: 'preferred' };
       const mockUser = { id: 'user-1', name: 'User1' };
 
-      generateAuthenticationOptionsForUser.mockResolvedValue({
-        options: mockOptions,
-        user: mockUser,
-      });
+      generateConditionalAuthenticationOptions.mockResolvedValue(mockOptions);
 
       // Create two separate agents (separate sessions)
       const agent1 = request.agent(app);
       const agent2 = request.agent(app);
 
       // Both start authentication
-      await agent1.post('/login/options').send({ username: 'User1' }).expect(200);
-      await agent2.post('/login/options').send({ username: 'User1' }).expect(200);
+      await agent1.get('/login/conditional-options').expect(200);
+      await agent2.get('/login/conditional-options').expect(200);
 
       // Verify that sessions are independent
-      users.findById.mockReturnValue(mockUser);
       verifyAuthentication.mockResolvedValue({ verified: true, user: mockUser });
 
       // Both should be able to verify independently

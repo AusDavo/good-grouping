@@ -78,6 +78,7 @@ const userQueries = {
   findByName: db.prepare('SELECT * FROM users WHERE name = ?'),
   findAll: db.prepare('SELECT * FROM users ORDER BY name'),
   countAll: db.prepare('SELECT COUNT(*) as count FROM users'),
+  updateName: db.prepare('UPDATE users SET name = ? WHERE id = ?'),
 };
 
 // Passkey queries
@@ -183,6 +184,7 @@ const users = {
   findByName: (name) => userQueries.findByName.get(name),
   findAll: () => userQueries.findAll.all(),
   count: () => userQueries.countAll.get().count,
+  updateName: (id, name) => userQueries.updateName.run(name, id),
 };
 
 const passkeys = {

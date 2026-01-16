@@ -16,7 +16,7 @@
           <% if (user.is_admin) { %>
             <a href="/admin/invites">Invites</a>
           <% } %>
-          <span class="user-name"><%= user.name %></span>
+          <a href="/profile" class="user-name"><%= user.name %></a>
           <form action="/logout" method="POST" class="logout-form">
             <button type="submit" class="btn-link">Logout</button>
           </form>

@@ -3,11 +3,10 @@ const { users, invitations } = require('../db');
 const {
   generateRegistrationOptionsForUser,
   verifyAndStoreRegistration,
-  generateAuthenticationOptionsForUser,
   generateConditionalAuthenticationOptions,
   verifyAuthentication,
 } = require('../auth');
-const { redirectIfAuthenticated } = require('../middleware/auth');
+const { redirectIfAuthenticated, requireAuth } = require('../middleware/auth');
 
 const router = express.Router();
 
@@ -16,33 +15,7 @@ router.get('/login', redirectIfAuthenticated, (req, res) => {
   res.render('login', { title: 'Login', error: null });
 });
 
-// Generate authentication options (with username)
-router.post('/login/options', async (req, res) => {
-  try {
-    const { username } = req.body;
-
-    if (!username) {
-      return res.status(400).json({ error: 'Name is required' });
-    }
-
-    const result = await generateAuthenticationOptionsForUser(username);
-
-    if (result.error) {
-      return res.status(400).json({ error: result.error });
-    }
-
-    // Store challenge in session
-    req.session.authChallenge = result.options.challenge;
-    req.session.authUserId = result.user.id;
-
-    res.json(result.options);
-  } catch (error) {
-    console.error('Login options error:', error);
-    res.status(500).json({ error: 'Failed to generate authentication options' });
-  }
-});
-
-// Generate authentication options for conditional UI (passkey autofill)
+// Generate authentication options for passkey login
 router.get('/login/conditional-options', async (req, res) => {
   try {
     const options = await generateConditionalAuthenticationOptions();
@@ -229,6 +202,53 @@ router.post('/register/verify', async (req, res) => {
     console.error('Registration verify error:', error);
     res.status(500).json({ error: 'Registration verification failed' });
   }
+});
+
+// Profile page
+router.get('/profile', requireAuth, (req, res) => {
+  res.render('profile', {
+    title: 'Profile',
+    error: null,
+    success: null,
+  });
+});
+
+// Update profile
+router.post('/profile', requireAuth, (req, res) => {
+  const { name } = req.body;
+  const trimmedName = name ? name.trim() : '';
+
+  // Validate name
+  if (trimmedName.length < 2 || trimmedName.length > 50) {
+    return res.render('profile', {
+      title: 'Profile',
+      error: 'Name must be 2-50 characters',
+      success: null,
+    });
+  }
+
+  // Check if name is taken by another user
+  const existingUser = users.findByName(trimmedName);
+  if (existingUser && existingUser.id !== req.user.id) {
+    return res.render('profile', {
+      title: 'Profile',
+      error: 'Name already taken',
+      success: null,
+    });
+  }
+
+  // Update name
+  users.updateName(req.user.id, trimmedName);
+
+  // Update session user object
+  req.user.name = trimmedName;
+  res.locals.user.name = trimmedName;
+
+  res.render('profile', {
+    title: 'Profile',
+    error: null,
+    success: 'Name updated successfully',
+  });
 });
 
 // Logout

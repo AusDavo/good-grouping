@@ -96,102 +96,6 @@ async function handlePasskeyLogin() {
   }
 }
 
-// Handle legacy login form submission (with username - kept for fallback)
-async function handleLogin(event) {
-  event.preventDefault();
-
-  const statusEl = document.getElementById('login-status');
-  const username = document.getElementById('username').value.trim();
-
-  // If no username, use the direct passkey login
-  if (!username) {
-    return handlePasskeyLogin();
-  }
-
-  statusEl.textContent = 'Starting authentication...';
-  statusEl.className = 'status-message';
-
-  try {
-    // Get authentication options from server
-    const optionsRes = await fetch('/login/options', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ username }),
-    });
-
-    const options = await optionsRes.json();
-
-    if (options.error) {
-      statusEl.textContent = options.error;
-      statusEl.className = 'status-message alert alert-error';
-      return;
-    }
-
-    // Convert challenge from base64url
-    options.challenge = base64urlToBuffer(options.challenge);
-
-    // Convert allowCredentials if present
-    if (options.allowCredentials) {
-      options.allowCredentials = options.allowCredentials.map(cred => ({
-        ...cred,
-        id: base64urlToBuffer(cred.id),
-      }));
-    }
-
-    statusEl.textContent = 'Please authenticate with your passkey...';
-
-    // Call WebAuthn API
-    const credential = await navigator.credentials.get({
-      publicKey: options,
-    });
-
-    // Prepare response for server
-    const response = {
-      id: credential.id,
-      rawId: bufferToBase64url(credential.rawId),
-      response: {
-        authenticatorData: bufferToBase64url(credential.response.authenticatorData),
-        clientDataJSON: bufferToBase64url(credential.response.clientDataJSON),
-        signature: bufferToBase64url(credential.response.signature),
-        userHandle: credential.response.userHandle
-          ? bufferToBase64url(credential.response.userHandle)
-          : null,
-      },
-      type: credential.type,
-      clientExtensionResults: credential.getClientExtensionResults(),
-      authenticatorAttachment: credential.authenticatorAttachment,
-    };
-
-    statusEl.textContent = 'Verifying...';
-
-    // Verify with server
-    const verifyRes = await fetch('/login/verify', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ response }),
-    });
-
-    const result = await verifyRes.json();
-
-    if (result.success) {
-      statusEl.textContent = 'Login successful! Redirecting...';
-      statusEl.className = 'status-message alert alert-success';
-      window.location.href = result.redirect || '/';
-    } else {
-      statusEl.textContent = result.error || 'Login failed';
-      statusEl.className = 'status-message alert alert-error';
-    }
-  } catch (error) {
-    console.error('Login error:', error);
-    if (error.name === 'NotAllowedError') {
-      statusEl.textContent = 'Authentication was cancelled or not allowed';
-    } else {
-      statusEl.textContent = 'Authentication failed: ' + error.message;
-    }
-    statusEl.className = 'status-message alert alert-error';
-  }
-}
-
 // Handle registration form submission
 async function handleRegister(event) {
   event.preventDefault();
@@ -297,102 +201,9 @@ async function handleRegister(event) {
   }
 }
 
-// Start conditional UI authentication (passkey autofill)
-async function startConditionalUI() {
-  // Check if conditional mediation is supported
-  if (!window.PublicKeyCredential ||
-      !PublicKeyCredential.isConditionalMediationAvailable) {
-    return;
-  }
-
-  const isAvailable = await PublicKeyCredential.isConditionalMediationAvailable();
-  if (!isAvailable) {
-    return;
-  }
-
-  try {
-    // Get conditional authentication options from server
-    const optionsRes = await fetch('/login/conditional-options');
-    const options = await optionsRes.json();
-
-    if (options.error) {
-      console.error('Conditional options error:', options.error);
-      return;
-    }
-
-    // Convert challenge from base64url
-    options.challenge = base64urlToBuffer(options.challenge);
-
-    // Start conditional UI - this will show passkeys in the autofill dropdown
-    const credential = await navigator.credentials.get({
-      publicKey: options,
-      mediation: 'conditional',
-    });
-
-    // User selected a passkey from autofill - verify it
-    const statusEl = document.getElementById('login-status');
-    if (statusEl) {
-      statusEl.textContent = 'Verifying...';
-      statusEl.className = 'status-message';
-    }
-
-    // Prepare response for server
-    const response = {
-      id: credential.id,
-      rawId: bufferToBase64url(credential.rawId),
-      response: {
-        authenticatorData: bufferToBase64url(credential.response.authenticatorData),
-        clientDataJSON: bufferToBase64url(credential.response.clientDataJSON),
-        signature: bufferToBase64url(credential.response.signature),
-        userHandle: credential.response.userHandle
-          ? bufferToBase64url(credential.response.userHandle)
-          : null,
-      },
-      type: credential.type,
-      clientExtensionResults: credential.getClientExtensionResults(),
-      authenticatorAttachment: credential.authenticatorAttachment,
-    };
-
-    // Verify with server
-    const verifyRes = await fetch('/login/verify', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ response }),
-    });
-
-    const result = await verifyRes.json();
-
-    if (result.success) {
-      if (statusEl) {
-        statusEl.textContent = 'Login successful! Redirecting...';
-        statusEl.className = 'status-message alert alert-success';
-      }
-      window.location.href = result.redirect || '/';
-    } else {
-      if (statusEl) {
-        statusEl.textContent = result.error || 'Login failed';
-        statusEl.className = 'status-message alert alert-error';
-      }
-    }
-  } catch (error) {
-    // AbortError is expected if user submits form instead of using autofill
-    if (error.name !== 'AbortError') {
-      console.error('Conditional UI error:', error);
-    }
-  }
-}
-
 // Check for WebAuthn support and attach event listeners on page load
 document.addEventListener('DOMContentLoaded', function() {
-  // Attach login handlers
-  const loginForm = document.getElementById('login-form');
-  if (loginForm) {
-    loginForm.addEventListener('submit', handleLogin);
-    // Start conditional UI for passkey autofill
-    startConditionalUI();
-  }
-
-  // Attach passkey button handler
+  // Attach passkey login button handler
   const passkeyBtn = document.getElementById('passkey-login-btn');
   if (passkeyBtn) {
     passkeyBtn.addEventListener('click', handlePasskeyLogin);
@@ -406,15 +217,14 @@ document.addEventListener('DOMContentLoaded', function() {
 
   // Check for WebAuthn support
   if (!window.PublicKeyCredential) {
-    const forms = document.querySelectorAll('#login-form, #register-form');
-    forms.forEach(form => {
+    if (registerForm) {
       const warning = document.createElement('div');
       warning.className = 'alert alert-error';
       warning.textContent = 'Your browser does not support passkeys. Please use a modern browser.';
-      form.prepend(warning);
-      const submitBtn = form.querySelector('button[type="submit"]');
+      registerForm.prepend(warning);
+      const submitBtn = registerForm.querySelector('button[type="submit"]');
       if (submitBtn) submitBtn.disabled = true;
-    });
+    }
     if (passkeyBtn) passkeyBtn.disabled = true;
   }
 });
