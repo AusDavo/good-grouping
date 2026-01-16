@@ -57,7 +57,12 @@ async function verifyAndStoreRegistration(user, response, expectedChallenge) {
       counter = registrationInfo.credential.counter;
     } else if (registrationInfo.credentialID) {
       // v9 API fallback: flat properties on registrationInfo
-      credentialIdBase64 = Buffer.from(registrationInfo.credentialID).toString('base64url');
+      // credentialID may be Uint8Array or already a base64url string depending on version
+      if (typeof registrationInfo.credentialID === 'string') {
+        credentialIdBase64 = registrationInfo.credentialID;
+      } else {
+        credentialIdBase64 = Buffer.from(registrationInfo.credentialID).toString('base64url');
+      }
       publicKeyBase64 = Buffer.from(registrationInfo.credentialPublicKey).toString('base64');
       counter = registrationInfo.counter;
     } else {
