@@ -138,6 +138,8 @@ async function verifyAuthentication(response, expectedChallenge, user = null) {
     return { verified: false, error: 'Passkey not found' };
   }
 
+  console.log('Passkey data:', JSON.stringify(passkey, null, 2));
+
   // If no user provided (conditional UI flow), look up from passkey
   if (!user) {
     user = users.findById(passkey.user_id);
