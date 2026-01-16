@@ -157,9 +157,9 @@ async function verifyAuthentication(response, expectedChallenge, user = null) {
     expectedChallenge,
     expectedOrigin: origin,
     expectedRPID: rpID,
-    credential: {
-      id: passkey.credential_id,  // v10 expects base64url string, not Buffer
-      publicKey: new Uint8Array(publicKey),
+    authenticator: {
+      credentialID: Buffer.from(passkey.credential_id, 'base64url'),
+      credentialPublicKey: new Uint8Array(publicKey),
       counter: passkey.counter,
       transports: passkey.transports,
     },
