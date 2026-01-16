@@ -1,0 +1,50 @@
+<%- include('../layout', { body: `
+<div class="page-header">
+  <a href="/" class="btn btn-secondary">Back</a>
+  <h1>${game.game_type}</h1>
+</div>
+
+<div class="game-detail">
+  <div class="game-meta">
+    <p><strong>Date:</strong> ${new Date(game.played_at).toLocaleDateString()}</p>
+    <p><strong>Posted by:</strong> ${game.created_by_name}</p>
+  </div>
+
+  <div class="game-results">
+    <h2>Results</h2>
+    <table class="results-table">
+      <thead>
+        <tr>
+          <th>Player</th>
+          <th>Score</th>
+          <th>Result</th>
+        </tr>
+      </thead>
+      <tbody>
+        ${game.players.map(p => `
+        <tr class="${p.is_winner ? 'winner-row' : ''}">
+          <td>${p.name}</td>
+          <td>${p.score !== null ? p.score : '-'}</td>
+          <td>${p.is_winner ? '<span class="winner-badge">Winner</span>' : ''}</td>
+        </tr>
+        `).join('')}
+      </tbody>
+    </table>
+  </div>
+
+  ${game.notes ? `
+  <div class="game-notes-detail">
+    <h2>Notes</h2>
+    <p>${game.notes}</p>
+  </div>
+  ` : ''}
+
+  ${(typeof user !== 'undefined' && user && (game.created_by === user.id || user.is_admin)) ? `
+  <div class="game-actions">
+    <form action="/games/${game.id}/delete" method="POST" onsubmit="return confirm('Are you sure you want to delete this game?')">
+      <button type="submit" class="btn btn-danger">Delete Game</button>
+    </form>
+  </div>
+  ` : ''}
+</div>
+` }) %>

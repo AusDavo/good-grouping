@@ -1,0 +1,38 @@
+<%- include('layout', { body: `
+<div class="page-header">
+  <h1>Recent Games</h1>
+  <a href="/games/new" class="btn btn-primary">Record Game</a>
+</div>
+
+${games.length === 0 ? `
+<div class="empty-state">
+  <p>No games recorded yet.</p>
+  <p>Be the first to record a game!</p>
+</div>
+` : `
+<div class="games-list">
+  ${games.map(game => `
+  <div class="game-card">
+    <div class="game-header">
+      <span class="game-type">${game.game_type}</span>
+      <span class="game-date">${new Date(game.played_at).toLocaleDateString()}</span>
+    </div>
+    <div class="game-players">
+      ${game.players.map(p => `
+      <div class="player ${p.is_winner ? 'winner' : ''}">
+        <span class="player-name">${p.name}</span>
+        ${p.score !== null ? `<span class="player-score">${p.score}</span>` : ''}
+        ${p.is_winner ? '<span class="winner-badge">Winner</span>' : ''}
+      </div>
+      `).join('')}
+    </div>
+    ${game.notes ? `<div class="game-notes">${game.notes}</div>` : ''}
+    <div class="game-footer">
+      <span class="game-creator">Posted by ${game.created_by_name}</span>
+      <a href="/games/${game.id}" class="btn btn-sm">View</a>
+    </div>
+  </div>
+  `).join('')}
+</div>
+`}
+` }) %>

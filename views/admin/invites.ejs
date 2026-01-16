@@ -1,0 +1,87 @@
+<%- include('../layout', { body: `
+<div class="page-header">
+  <h1>Manage Invitations</h1>
+  <form action="/admin/invites" method="POST">
+    <button type="submit" class="btn btn-primary">Create New Invite</button>
+  </form>
+</div>
+
+<section class="invites-section">
+  <h2>Active Invitations</h2>
+  ${activeInvites.length === 0 ? '<p class="empty-text">No active invitations</p>' : `
+  <table class="invites-table">
+    <thead>
+      <tr>
+        <th>Link</th>
+        <th>Created By</th>
+        <th>Expires</th>
+        <th>Actions</th>
+      </tr>
+    </thead>
+    <tbody>
+      ${activeInvites.map(inv => `
+      <tr>
+        <td>
+          <input type="text" readonly value="${baseUrl}/register?token=${inv.token}" class="invite-link" onclick="this.select()">
+          <button type="button" class="btn btn-sm" onclick="navigator.clipboard.writeText('${baseUrl}/register?token=${inv.token}')">Copy</button>
+        </td>
+        <td>${inv.created_by_name}</td>
+        <td>${new Date(inv.expires_at).toLocaleDateString()}</td>
+        <td>
+          <form action="/admin/invites/${inv.id}/revoke" method="POST" style="display:inline">
+            <button type="submit" class="btn btn-sm btn-danger">Revoke</button>
+          </form>
+        </td>
+      </tr>
+      `).join('')}
+    </tbody>
+  </table>
+  `}
+</section>
+
+<section class="invites-section">
+  <h2>Used Invitations</h2>
+  ${usedInvites.length === 0 ? '<p class="empty-text">No used invitations</p>' : `
+  <table class="invites-table">
+    <thead>
+      <tr>
+        <th>Used By</th>
+        <th>Created By</th>
+        <th>Used At</th>
+      </tr>
+    </thead>
+    <tbody>
+      ${usedInvites.map(inv => `
+      <tr>
+        <td>${inv.used_by_name || 'Unknown'}</td>
+        <td>${inv.created_by_name}</td>
+        <td>${new Date(inv.used_at).toLocaleDateString()}</td>
+      </tr>
+      `).join('')}
+    </tbody>
+  </table>
+  `}
+</section>
+
+${expiredInvites.length > 0 ? `
+<section class="invites-section">
+  <h2>Expired Invitations</h2>
+  <table class="invites-table">
+    <thead>
+      <tr>
+        <th>Created By</th>
+        <th>Expired At</th>
+      </tr>
+    </thead>
+    <tbody>
+      ${expiredInvites.map(inv => `
+      <tr>
+        <td>${inv.created_by_name}</td>
+        <td>${new Date(inv.expires_at).toLocaleDateString()}</td>
+      </tr>
+      `).join('')}
+    </tbody>
+  </table>
+</section>
+` : ''}
+` }) %>

@@ -1,0 +1,23 @@
+{
+  "name": "dart-score-sharing",
+  "version": "1.0.0",
+  "description": "A passkey-authenticated app for sharing dart game results among friends and family",
+  "main": "src/index.js",
+  "scripts": {
+    "start": "node src/index.js",
+    "dev": "node --watch src/index.js"
+  },
+  "dependencies": {
+    "@simplewebauthn/server": "^10.0.0",
+    "better-sqlite3": "^11.0.0",
+    "connect-sqlite3": "^0.9.15",
+    "dotenv": "^16.4.0",
+    "ejs": "^3.1.10",
+    "express": "^4.21.0",
+    "express-session": "^1.18.0",
+    "uuid": "^10.0.0"
+  },
+  "engines": {
+    "node": ">=20.0.0"
+  }
+}

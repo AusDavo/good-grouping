@@ -1,0 +1,23 @@
+<%- include('layout', { body: `
+<div class="auth-container">
+  <h1>${typeof isFirstUser !== 'undefined' && isFirstUser ? 'Create Admin Account' : 'Create Account'}</h1>
+
+  ${typeof isFirstUser !== 'undefined' && isFirstUser ? '<p class="info-text">You are creating the first account, which will have admin privileges.</p>' : ''}
+
+  ${typeof error !== 'undefined' && error ? `<div class="alert alert-error">${error}</div>` : ''}
+
+  <form id="register-form" class="auth-form">
+    <input type="hidden" id="token" value="${token}">
+
+    <div class="form-group">
+      <label for="username">Name</label>
+      <input type="text" id="username" name="username" required minlength="2" maxlength="50">
+      <small>This is how you'll appear to others and how you'll log in</small>
+    </div>
+
+    <button type="submit" class="btn btn-primary btn-block">Register with Passkey</button>
+  </form>
+
+  <div id="register-status" class="status-message"></div>
+</div>
+` }) %>

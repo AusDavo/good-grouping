@@ -1,0 +1,18 @@
+<%- include('layout', { body: `
+<div class="auth-container">
+  <h1>Login</h1>
+
+  ${typeof error !== 'undefined' && error ? `<div class="alert alert-error">${error}</div>` : ''}
+
+  <form id="login-form" class="auth-form">
+    <div class="form-group">
+      <label for="username">Name</label>
+      <input type="text" id="username" name="username" required autocomplete="username webauthn">
+    </div>
+
+    <button type="submit" class="btn btn-primary btn-block">Login with Passkey</button>
+  </form>
+
+  <div id="login-status" class="status-message"></div>
+</div>
+` }) %>

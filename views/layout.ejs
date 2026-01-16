@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title><%= title %> - Dart Scores</title>
+  <link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+  <nav class="navbar">
+    <div class="container">
+      <a href="/" class="brand">Dart Scores</a>
+      <% if (typeof user !== 'undefined' && user) { %>
+        <div class="nav-links">
+          <a href="/games/new">New Game</a>
+          <% if (user.is_admin) { %>
+            <a href="/admin/invites">Invites</a>
+          <% } %>
+          <span class="user-name"><%= user.name %></span>
+          <form action="/logout" method="POST" class="logout-form">
+            <button type="submit" class="btn-link">Logout</button>
+          </form>
+        </div>
+      <% } %>
+    </div>
+  </nav>
+
+  <main class="container">
+    <%- body %>
+  </main>
+
+  <footer class="footer">
+    <div class="container">
+      <p>Dart Score Sharing</p>
+    </div>
+  </footer>
+
+  <script src="/js/webauthn.js"></script>
+</body>
+</html>
