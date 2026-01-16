@@ -18,7 +18,7 @@ router.get('/invites', (req, res) => {
     activeInvites,
     expiredInvites,
     usedInvites,
-    baseUrl: `${req.protocol}://${req.get('host')}`,
+    baseUrl: process.env.BASE_URL || `${req.protocol}://${req.get('host')}`,
   });
 });
 

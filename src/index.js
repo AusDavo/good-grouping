@@ -93,11 +93,12 @@ app.listen(PORT, () => {
   // Check for first-run setup
   const setupToken = getOrCreateSetupToken();
   if (setupToken) {
+    const baseUrl = process.env.BASE_URL || `http://localhost:${PORT}`;
     console.log('\n========================================');
     console.log('FIRST RUN SETUP');
     console.log('========================================');
     console.log(`No users found. Create your admin account at:`);
-    console.log(`http://localhost:${PORT}/register?token=${setupToken}`);
+    console.log(`${baseUrl}/register?token=${setupToken}`);
     console.log('========================================\n');
   }
 });
