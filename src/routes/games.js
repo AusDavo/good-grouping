@@ -1,6 +1,7 @@
 const express = require('express');
-const { games, users } = require('../db');
+const { games, users, notifications } = require('../db');
 const { requireAuth } = require('../middleware/auth');
+const { notifyGameCreated } = require('../pushService');
 
 const router = express.Router();
 
@@ -59,6 +60,24 @@ router.post('/', (req, res) => {
       playerData
     );
 
+    // Create notifications for other participants
+    for (const player of playerData) {
+      if (player.userId !== req.user.id) {
+        notifications.create(
+          player.userId,
+          'game_created',
+          gameId,
+          `${req.user.name} recorded a ${gameType || 'Cricket'} game with you. Please confirm the results.`
+        );
+      }
+    }
+
+    // Send push notifications (async, don't await)
+    const createdGame = games.findById(gameId);
+    notifyGameCreated(createdGame, playerData, req.user.name).catch(err => {
+      console.error('Push notification error:', err);
+    });
+
     res.redirect(`/games/${gameId}`);
   } catch (error) {
     console.error('Create game error:', error);
@@ -86,6 +105,33 @@ router.get('/:id', (req, res) => {
     title: `Game - ${game.game_type}`,
     game,
   });
+});
+
+// Confirm game results
+router.post('/:id/confirm', (req, res) => {
+  const game = games.findById(req.params.id);
+
+  if (!game) {
+    return res.status(404).render('error', {
+      title: 'Not Found',
+      message: 'Game not found',
+    });
+  }
+
+  // Check if user is a participant
+  const isParticipant = game.players.some(p => p.user_id === req.user.id);
+
+  if (!isParticipant) {
+    return res.status(403).render('error', {
+      title: 'Access Denied',
+      message: 'You are not a participant in this game',
+    });
+  }
+
+  // Confirm the game
+  games.confirmForUser(req.params.id, req.user.id);
+
+  res.redirect(`/games/${req.params.id}`);
 });
 
 // Delete game (only creator or admin)

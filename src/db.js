@@ -57,8 +57,30 @@ db.exec(`
       score INTEGER,
       position INTEGER,
       is_winner INTEGER DEFAULT 0,
+      confirmed_at TEXT,
       FOREIGN KEY (game_id) REFERENCES games(id) ON DELETE CASCADE,
       FOREIGN KEY (user_id) REFERENCES users(id)
+    );
+
+    CREATE TABLE IF NOT EXISTS notifications (
+      id TEXT PRIMARY KEY,
+      user_id TEXT NOT NULL,
+      type TEXT NOT NULL,
+      reference_id TEXT,
+      message TEXT NOT NULL,
+      read_at TEXT,
+      created_at TEXT DEFAULT (datetime('now')),
+      FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+    );
+
+    CREATE TABLE IF NOT EXISTS push_subscriptions (
+      id TEXT PRIMARY KEY,
+      user_id TEXT NOT NULL,
+      endpoint TEXT UNIQUE NOT NULL,
+      p256dh TEXT NOT NULL,
+      auth TEXT NOT NULL,
+      created_at TEXT DEFAULT (datetime('now')),
+      FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
     );
 
     CREATE INDEX IF NOT EXISTS idx_passkeys_user_id ON passkeys(user_id);
@@ -66,11 +88,20 @@ db.exec(`
     CREATE INDEX IF NOT EXISTS idx_invitations_token ON invitations(token);
     CREATE INDEX IF NOT EXISTS idx_games_played_at ON games(played_at);
     CREATE INDEX IF NOT EXISTS idx_game_players_game_id ON game_players(game_id);
+    CREATE INDEX IF NOT EXISTS idx_notifications_user ON notifications(user_id, read_at);
+    CREATE INDEX IF NOT EXISTS idx_push_subscriptions_user_id ON push_subscriptions(user_id);
 `);
 
 // Migration: Add avatar_url column if it doesn't exist
 try {
   db.exec('ALTER TABLE users ADD COLUMN avatar_url TEXT');
+} catch (e) {
+  // Column already exists, ignore
+}
+
+// Migration: Add confirmed_at column to game_players if it doesn't exist
+try {
+  db.exec('ALTER TABLE game_players ADD COLUMN confirmed_at TEXT');
 } catch (e) {
   // Column already exists, ignore
 }
@@ -169,8 +200,8 @@ const gameQueries = {
 // Game player queries
 const gamePlayerQueries = {
   create: db.prepare(`
-    INSERT INTO game_players (id, game_id, user_id, score, position, is_winner)
-    VALUES (?, ?, ?, ?, ?, ?)
+    INSERT INTO game_players (id, game_id, user_id, score, position, is_winner, confirmed_at)
+    VALUES (?, ?, ?, ?, ?, ?, ?)
   `),
 
   findByGameId: db.prepare(`
@@ -180,6 +211,64 @@ const gamePlayerQueries = {
     WHERE gp.game_id = ?
     ORDER BY gp.position, gp.is_winner DESC
   `),
+
+  confirmGame: db.prepare(`
+    UPDATE game_players SET confirmed_at = datetime('now')
+    WHERE game_id = ? AND user_id = ?
+  `),
+};
+
+// Notification queries
+const notificationQueries = {
+  create: db.prepare(`
+    INSERT INTO notifications (id, user_id, type, reference_id, message)
+    VALUES (?, ?, ?, ?, ?)
+  `),
+
+  findByUserId: db.prepare(`
+    SELECT * FROM notifications
+    WHERE user_id = ?
+    ORDER BY created_at DESC
+    LIMIT ?
+  `),
+
+  findUnreadByUserId: db.prepare(`
+    SELECT * FROM notifications
+    WHERE user_id = ? AND read_at IS NULL
+    ORDER BY created_at DESC
+  `),
+
+  countUnread: db.prepare(`
+    SELECT COUNT(*) as count FROM notifications
+    WHERE user_id = ? AND read_at IS NULL
+  `),
+
+  markAsRead: db.prepare(`
+    UPDATE notifications SET read_at = datetime('now') WHERE id = ?
+  `),
+
+  markAllAsRead: db.prepare(`
+    UPDATE notifications SET read_at = datetime('now')
+    WHERE user_id = ? AND read_at IS NULL
+  `),
+
+  findById: db.prepare('SELECT * FROM notifications WHERE id = ?'),
+};
+
+// Push subscription queries
+const pushSubscriptionQueries = {
+  create: db.prepare(`
+    INSERT INTO push_subscriptions (id, user_id, endpoint, p256dh, auth)
+    VALUES (?, ?, ?, ?, ?)
+  `),
+
+  findByUserId: db.prepare('SELECT * FROM push_subscriptions WHERE user_id = ?'),
+
+  findByEndpoint: db.prepare('SELECT * FROM push_subscriptions WHERE endpoint = ?'),
+
+  deleteByEndpoint: db.prepare('DELETE FROM push_subscriptions WHERE endpoint = ?'),
+
+  deleteByUserId: db.prepare('DELETE FROM push_subscriptions WHERE user_id = ?'),
 };
 
 // Helper functions
@@ -253,13 +342,16 @@ const games = {
 
       for (const player of players) {
         const playerId = uuidv4();
+        // Auto-confirm if this player is the creator
+        const confirmedAt = player.userId === createdBy ? new Date().toISOString() : null;
         gamePlayerQueries.create.run(
           playerId,
           id,
           player.userId,
           player.score || null,
           player.position || null,
-          player.isWinner ? 1 : 0
+          player.isWinner ? 1 : 0,
+          confirmedAt
         );
       }
 
@@ -286,6 +378,38 @@ const games = {
   },
 
   delete: (id) => gameQueries.delete.run(id),
+
+  confirmForUser(gameId, userId) {
+    return gamePlayerQueries.confirmGame.run(gameId, userId);
+  },
+};
+
+const notifications = {
+  create(userId, type, referenceId, message) {
+    const id = uuidv4();
+    notificationQueries.create.run(id, userId, type, referenceId, message);
+    return { id, user_id: userId, type, reference_id: referenceId, message };
+  },
+  findByUserId: (userId, limit = 50) => notificationQueries.findByUserId.all(userId, limit),
+  findUnread: (userId) => notificationQueries.findUnreadByUserId.all(userId),
+  countUnread: (userId) => notificationQueries.countUnread.get(userId).count,
+  markAsRead: (id) => notificationQueries.markAsRead.run(id),
+  markAllAsRead: (userId) => notificationQueries.markAllAsRead.run(userId),
+  findById: (id) => notificationQueries.findById.get(id),
+};
+
+const pushSubscriptions = {
+  create(userId, endpoint, p256dh, auth) {
+    const id = uuidv4();
+    // Upsert - delete existing with same endpoint first
+    pushSubscriptionQueries.deleteByEndpoint.run(endpoint);
+    pushSubscriptionQueries.create.run(id, userId, endpoint, p256dh, auth);
+    return { id, user_id: userId, endpoint };
+  },
+  findByUserId: (userId) => pushSubscriptionQueries.findByUserId.all(userId),
+  findByEndpoint: (endpoint) => pushSubscriptionQueries.findByEndpoint.get(endpoint),
+  deleteByEndpoint: (endpoint) => pushSubscriptionQueries.deleteByEndpoint.run(endpoint),
+  deleteByUserId: (userId) => pushSubscriptionQueries.deleteByUserId.run(userId),
 };
 
 // Bootstrap setup token for first admin
@@ -319,5 +443,7 @@ module.exports = {
   passkeys,
   invitations,
   games,
+  notifications,
+  pushSubscriptions,
   getOrCreateSetupToken,
 };

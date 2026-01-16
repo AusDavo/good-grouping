@@ -22,6 +22,31 @@
               Invites
             </a>
           <% } %>
+          <!-- Notification Bell -->
+          <div class="relative" id="notification-dropdown">
+            <button id="notification-bell" class="relative text-slate-300 hover:text-blue-400 transition-colors duration-200">
+              <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
+              </svg>
+              <% if (typeof unreadNotificationCount !== 'undefined' && unreadNotificationCount > 0) { %>
+                <span id="notification-badge" class="absolute -top-1 -right-1 bg-rose-500 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center font-medium">
+                  <%= unreadNotificationCount > 9 ? '9+' : unreadNotificationCount %>
+                </span>
+              <% } else { %>
+                <span id="notification-badge" class="hidden absolute -top-1 -right-1 bg-rose-500 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center font-medium"></span>
+              <% } %>
+            </button>
+            <!-- Notification Dropdown -->
+            <div id="notification-panel" class="hidden absolute right-0 mt-2 w-80 bg-slate-800 rounded-xl border border-slate-700 shadow-xl z-50">
+              <div class="p-4 border-b border-slate-700 flex justify-between items-center">
+                <span class="font-semibold text-slate-200">Notifications</span>
+                <a href="/notifications" class="text-sm text-blue-400 hover:text-blue-300">View all</a>
+              </div>
+              <div id="notification-list" class="max-h-96 overflow-y-auto">
+                <div class="p-4 text-center text-slate-500">Loading...</div>
+              </div>
+            </div>
+          </div>
           <a href="/profile" class="flex items-center gap-2 group">
             <% if (user.avatar_url) { %>
               <img src="<%= user.avatar_url %>" alt="<%= user.name %>" class="w-8 h-8 rounded-full object-cover ring-2 ring-slate-600 group-hover:ring-blue-500 transition-all duration-200">
@@ -55,5 +80,6 @@
   </footer>
 
   <script src="/js/webauthn.js"></script>
+  <script src="/js/notifications.js"></script>
 </body>
 </html>

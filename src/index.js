@@ -50,10 +50,14 @@ app.use(loadUser);
 const authRoutes = require('./routes/auth');
 const adminRoutes = require('./routes/admin');
 const gamesRoutes = require('./routes/games');
+const notificationsRoutes = require('./routes/notifications');
+const pushRoutes = require('./routes/push');
 
 app.use('/', authRoutes);
 app.use('/admin', adminRoutes);
 app.use('/games', gamesRoutes);
+app.use('/notifications', notificationsRoutes);
+app.use('/push', pushRoutes);
 
 // Home page - game feed
 app.get('/', (req, res) => {
