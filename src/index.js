@@ -88,12 +88,12 @@ app.use((err, req, res, next) => {
 
 // Start server
 app.listen(PORT, () => {
-  console.log(`Server running on http://localhost:${PORT}`);
+  const baseUrl = process.env.BASE_URL || `http://localhost:${PORT}`;
+  console.log(`Server running on ${baseUrl}`);
 
   // Check for first-run setup
   const setupToken = getOrCreateSetupToken();
   if (setupToken) {
-    const baseUrl = process.env.BASE_URL || `http://localhost:${PORT}`;
     console.log('\n========================================');
     console.log('FIRST RUN SETUP');
     console.log('========================================');

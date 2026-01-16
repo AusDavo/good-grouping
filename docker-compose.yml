@@ -14,6 +14,7 @@ services:
       - RP_NAME=${RP_NAME:-Dart Score Sharing}
       - RP_ID=${RP_ID:-darts.dpinkerton.com}
       - ORIGIN=${ORIGIN:-https://darts.dpinkerton.com}
+      - BASE_URL=${BASE_URL:-https://darts.dpinkerton.com}
       - TRUST_PROXY=${TRUST_PROXY:-true}
     restart: unless-stopped
 

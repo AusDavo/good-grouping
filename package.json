@@ -5,7 +5,10 @@
   "main": "src/index.js",
   "scripts": {
     "start": "node src/index.js",
-    "dev": "node --watch src/index.js"
+    "dev": "node --watch src/index.js",
+    "test": "jest",
+    "test:watch": "jest --watch",
+    "test:coverage": "jest --coverage"
   },
   "dependencies": {
     "@simplewebauthn/server": "^10.0.0",
@@ -17,7 +20,18 @@
     "express-session": "^1.18.0",
     "uuid": "^10.0.0"
   },
+  "devDependencies": {
+    "jest": "^29.7.0",
+    "supertest": "^7.0.0"
+  },
   "engines": {
     "node": ">=20.0.0"
+  },
+  "jest": {
+    "testEnvironment": "node",
+    "testMatch": ["**/__tests__/**/*.js", "**/*.test.js"],
+    "collectCoverageFrom": ["src/**/*.js", "!src/index.js"],
+    "coverageDirectory": "coverage",
+    "verbose": true
   }
 }

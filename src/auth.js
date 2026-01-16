@@ -23,8 +23,8 @@ async function generateRegistrationOptionsForUser(user) {
     userDisplayName: user.name,
     attestationType: 'none',
     excludeCredentials: userPasskeys.map(pk => ({
-      id: Buffer.from(pk.credential_id, 'base64url'),
-      transports: pk.transports,
+      id: pk.credential_id,
+      transports: pk.transports || undefined,
     })),
     authenticatorSelection: {
       residentKey: 'preferred',
@@ -65,7 +65,7 @@ async function verifyAndStoreRegistration(user, response, expectedChallenge) {
   return { verified: false };
 }
 
-// Generate authentication options for login
+// Generate authentication options for login (with username)
 async function generateAuthenticationOptionsForUser(name) {
   const user = users.findByName(name);
   if (!user) {
@@ -80,8 +80,8 @@ async function generateAuthenticationOptionsForUser(name) {
   const options = await generateAuthenticationOptions({
     rpID,
     allowCredentials: userPasskeys.map(pk => ({
-      id: Buffer.from(pk.credential_id, 'base64url'),
-      transports: pk.transports,
+      id: pk.credential_id,
+      transports: pk.transports || undefined,
     })),
     userVerification: 'preferred',
   });
@@ -89,14 +89,34 @@ async function generateAuthenticationOptionsForUser(name) {
   return { options, user };
 }
 
+// Generate authentication options for conditional UI (no username required)
+async function generateConditionalAuthenticationOptions() {
+  const options = await generateAuthenticationOptions({
+    rpID,
+    userVerification: 'preferred',
+    // Empty allowCredentials allows any discoverable credential for this RP
+  });
+
+  return options;
+}
+
 // Verify authentication response
-async function verifyAuthentication(response, expectedChallenge, user) {
+// user is optional - if not provided, will look up from credential
+async function verifyAuthentication(response, expectedChallenge, user = null) {
   // Find the passkey being used
   const credentialIdBase64 = response.id;
   const passkey = passkeys.findByCredentialId(credentialIdBase64);
 
   if (!passkey) {
     return { verified: false, error: 'Passkey not found' };
+  }
+
+  // If no user provided (conditional UI flow), look up from passkey
+  if (!user) {
+    user = users.findById(passkey.user_id);
+    if (!user) {
+      return { verified: false, error: 'User not found' };
+    }
   }
 
   // Decode the stored public key from base64
@@ -128,6 +148,7 @@ module.exports = {
   generateRegistrationOptionsForUser,
   verifyAndStoreRegistration,
   generateAuthenticationOptionsForUser,
+  generateConditionalAuthenticationOptions,
   verifyAuthentication,
   getRpID: () => rpID,
   getOrigin: () => origin,

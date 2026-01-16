@@ -6,11 +6,12 @@
 
   <form id="login-form" class="auth-form">
     <div class="form-group">
-      <label for="username">Name</label>
-      <input type="text" id="username" name="username" required autocomplete="username webauthn">
+      <label for="username">Click to see your passkey</label>
+      <input type="text" id="username" name="username" placeholder="Select your passkey..." autocomplete="username webauthn" readonly>
     </div>
 
-    <button type="submit" class="btn btn-primary btn-block">Login with Passkey</button>
+    <p class="login-hint">Or use the button below:</p>
+    <button type="button" id="passkey-login-btn" class="btn btn-primary btn-block">Login with Passkey</button>
   </form>
 
   <div id="login-status" class="status-message"></div>

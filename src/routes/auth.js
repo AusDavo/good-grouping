@@ -4,6 +4,7 @@ const {
   generateRegistrationOptionsForUser,
   verifyAndStoreRegistration,
   generateAuthenticationOptionsForUser,
+  generateConditionalAuthenticationOptions,
   verifyAuthentication,
 } = require('../auth');
 const { redirectIfAuthenticated } = require('../middleware/auth');
@@ -15,7 +16,7 @@ router.get('/login', redirectIfAuthenticated, (req, res) => {
   res.render('login', { title: 'Login', error: null });
 });
 
-// Generate authentication options
+// Generate authentication options (with username)
 router.post('/login/options', async (req, res) => {
   try {
     const { username } = req.body;
@@ -41,6 +42,22 @@ router.post('/login/options', async (req, res) => {
   }
 });
 
+// Generate authentication options for conditional UI (passkey autofill)
+router.get('/login/conditional-options', async (req, res) => {
+  try {
+    const options = await generateConditionalAuthenticationOptions();
+
+    // Store challenge in session (no userId yet - will be determined from credential)
+    req.session.authChallenge = options.challenge;
+    req.session.authUserId = null; // Will be looked up from credential
+
+    res.json(options);
+  } catch (error) {
+    console.error('Conditional options error:', error);
+    res.status(500).json({ error: 'Failed to generate authentication options' });
+  }
+});
+
 // Verify authentication
 router.post('/login/verify', async (req, res) => {
   try {
@@ -48,13 +65,17 @@ router.post('/login/verify', async (req, res) => {
     const expectedChallenge = req.session.authChallenge;
     const userId = req.session.authUserId;
 
-    if (!expectedChallenge || !userId) {
+    if (!expectedChallenge) {
       return res.status(400).json({ error: 'No authentication in progress' });
     }
 
-    const user = users.findById(userId);
-    if (!user) {
-      return res.status(400).json({ error: 'User not found' });
+    // For conditional UI flow, userId may be null - user will be looked up from credential
+    let user = null;
+    if (userId) {
+      user = users.findById(userId);
+      if (!user) {
+        return res.status(400).json({ error: 'User not found' });
+      }
     }
 
     const result = await verifyAuthentication(response, expectedChallenge, user);
@@ -64,11 +85,11 @@ router.post('/login/verify', async (req, res) => {
     delete req.session.authUserId;
 
     if (result.verified) {
-      req.session.userId = user.id;
+      req.session.userId = result.user.id;
       return res.json({ success: true, redirect: '/' });
     }
 
-    res.status(400).json({ error: 'Authentication failed' });
+    res.status(400).json({ error: result.error || 'Authentication failed' });
   } catch (error) {
     console.error('Login verify error:', error);
     res.status(500).json({ error: 'Authentication verification failed' });
