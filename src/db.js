@@ -14,6 +14,7 @@ db.exec(`
       id TEXT PRIMARY KEY,
       name TEXT UNIQUE NOT NULL,
       is_admin INTEGER DEFAULT 0,
+      avatar_url TEXT,
       created_at TEXT DEFAULT (datetime('now'))
     );
 
@@ -67,6 +68,13 @@ db.exec(`
     CREATE INDEX IF NOT EXISTS idx_game_players_game_id ON game_players(game_id);
 `);
 
+// Migration: Add avatar_url column if it doesn't exist
+try {
+  db.exec('ALTER TABLE users ADD COLUMN avatar_url TEXT');
+} catch (e) {
+  // Column already exists, ignore
+}
+
 // User queries
 const userQueries = {
   create: db.prepare(`
@@ -79,6 +87,7 @@ const userQueries = {
   findAll: db.prepare('SELECT * FROM users ORDER BY name'),
   countAll: db.prepare('SELECT COUNT(*) as count FROM users'),
   updateName: db.prepare('UPDATE users SET name = ? WHERE id = ?'),
+  updateAvatar: db.prepare('UPDATE users SET avatar_url = ? WHERE id = ?'),
 };
 
 // Passkey queries
@@ -185,6 +194,7 @@ const users = {
   findAll: () => userQueries.findAll.all(),
   count: () => userQueries.countAll.get().count,
   updateName: (id, name) => userQueries.updateName.run(name, id),
+  updateAvatar: (id, avatarUrl) => userQueries.updateAvatar.run(avatarUrl, id),
 };
 
 const passkeys = {

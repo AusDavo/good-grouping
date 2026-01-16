@@ -1,5 +1,37 @@
 const express = require('express');
+const multer = require('multer');
+const path = require('path');
+const fs = require('fs');
 const { users, invitations } = require('../db');
+
+// Configure multer for avatar uploads
+const uploadDir = path.join(__dirname, '../../public/uploads/avatars');
+if (!fs.existsSync(uploadDir)) {
+  fs.mkdirSync(uploadDir, { recursive: true });
+}
+
+const storage = multer.diskStorage({
+  destination: (req, file, cb) => cb(null, uploadDir),
+  filename: (req, file, cb) => {
+    const ext = path.extname(file.originalname).toLowerCase();
+    cb(null, `${req.user.id}${ext}`);
+  },
+});
+
+const upload = multer({
+  storage,
+  limits: { fileSize: 2 * 1024 * 1024 }, // 2MB limit
+  fileFilter: (req, file, cb) => {
+    const allowedTypes = /jpeg|jpg|png|gif|webp/;
+    const ext = allowedTypes.test(path.extname(file.originalname).toLowerCase());
+    const mime = allowedTypes.test(file.mimetype);
+    if (ext && mime) {
+      cb(null, true);
+    } else {
+      cb(new Error('Only image files are allowed'));
+    }
+  },
+});
 const {
   generateRegistrationOptionsForUser,
   verifyAndStoreRegistration,
@@ -248,6 +280,68 @@ router.post('/profile', requireAuth, (req, res) => {
     title: 'Profile',
     error: null,
     success: 'Name updated successfully',
+  });
+});
+
+// Upload avatar
+router.post('/profile/avatar', requireAuth, (req, res) => {
+  upload.single('avatar')(req, res, (err) => {
+    if (err) {
+      const errorMsg = err.message === 'File too large'
+        ? 'Image must be under 2MB'
+        : err.message || 'Upload failed';
+      return res.render('profile', {
+        title: 'Profile',
+        error: errorMsg,
+        success: null,
+      });
+    }
+
+    if (!req.file) {
+      return res.render('profile', {
+        title: 'Profile',
+        error: 'Please select an image',
+        success: null,
+      });
+    }
+
+    // Update user's avatar URL
+    const avatarUrl = `/uploads/avatars/${req.file.filename}`;
+    users.updateAvatar(req.user.id, avatarUrl);
+
+    // Update session
+    req.user.avatar_url = avatarUrl;
+    res.locals.user.avatar_url = avatarUrl;
+
+    res.render('profile', {
+      title: 'Profile',
+      error: null,
+      success: 'Profile picture updated',
+    });
+  });
+});
+
+// Remove avatar
+router.post('/profile/avatar/remove', requireAuth, (req, res) => {
+  // Delete the file if it exists
+  if (req.user.avatar_url) {
+    const filePath = path.join(__dirname, '../../public', req.user.avatar_url);
+    if (fs.existsSync(filePath)) {
+      fs.unlinkSync(filePath);
+    }
+  }
+
+  // Clear avatar URL in database
+  users.updateAvatar(req.user.id, null);
+
+  // Update session
+  req.user.avatar_url = null;
+  res.locals.user.avatar_url = null;
+
+  res.render('profile', {
+    title: 'Profile',
+    error: null,
+    success: 'Profile picture removed',
   });
 });
 

@@ -70,9 +70,57 @@ body {
   color: var(--primary);
 }
 
+.user-info {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  text-decoration: none;
+}
+
 .user-name {
   color: var(--gray-500);
   font-size: 0.875rem;
+}
+
+/* Avatars */
+.avatar-small {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  object-fit: cover;
+}
+
+.avatar-placeholder-small {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: var(--primary);
+  color: white;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.75rem;
+  font-weight: 600;
+}
+
+.avatar-large {
+  width: 100px;
+  height: 100px;
+  border-radius: 50%;
+  object-fit: cover;
+}
+
+.avatar-placeholder-large {
+  width: 100px;
+  height: 100px;
+  border-radius: 50%;
+  background: var(--primary);
+  color: white;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 2.5rem;
+  font-weight: 600;
 }
 
 .logout-form {
@@ -215,6 +263,43 @@ main {
 
 .auth-form {
   margin-top: 1rem;
+}
+
+/* Profile page */
+.profile-avatar-section {
+  text-align: center;
+  margin-bottom: 1.5rem;
+}
+
+.avatar-preview {
+  margin-bottom: 1rem;
+  display: flex;
+  justify-content: center;
+}
+
+.avatar-form {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.avatar-form .form-group {
+  margin-bottom: 0;
+}
+
+.file-input {
+  display: none;
+}
+
+.avatar-remove-form {
+  margin-top: 0.25rem;
+}
+
+.divider {
+  border: none;
+  border-top: 1px solid var(--gray-200);
+  margin: 1.5rem 0;
 }
 
 .info-text {

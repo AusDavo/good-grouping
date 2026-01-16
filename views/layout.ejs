@@ -16,7 +16,14 @@
           <% if (user.is_admin) { %>
             <a href="/admin/invites">Invites</a>
           <% } %>
-          <a href="/profile" class="user-name"><%= user.name %></a>
+          <a href="/profile" class="user-info">
+            <% if (user.avatar_url) { %>
+              <img src="<%= user.avatar_url %>" alt="<%= user.name %>" class="avatar-small">
+            <% } else { %>
+              <span class="avatar-placeholder-small"><%= user.name.charAt(0).toUpperCase() %></span>
+            <% } %>
+            <span class="user-name"><%= user.name %></span>
+          </a>
           <form action="/logout" method="POST" class="logout-form">
             <button type="submit" class="btn-link">Logout</button>
           </form>

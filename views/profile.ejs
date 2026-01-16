@@ -5,6 +5,31 @@
   ${typeof error !== 'undefined' && error ? `<div class="alert alert-error">${error}</div>` : ''}
   ${typeof success !== 'undefined' && success ? `<div class="alert alert-success">${success}</div>` : ''}
 
+  <div class="profile-avatar-section">
+    <div class="avatar-preview">
+      ${user.avatar_url
+        ? `<img src="${user.avatar_url}" alt="${user.name}" class="avatar-large">`
+        : `<div class="avatar-placeholder-large">${user.name.charAt(0).toUpperCase()}</div>`
+      }
+    </div>
+
+    <form method="POST" action="/profile/avatar" enctype="multipart/form-data" class="avatar-form">
+      <div class="form-group">
+        <label for="avatar" class="btn btn-secondary">Choose Image</label>
+        <input type="file" id="avatar" name="avatar" accept="image/jpeg,image/png,image/gif,image/webp" class="file-input">
+      </div>
+      <button type="submit" class="btn btn-primary">Upload</button>
+      ${user.avatar_url ? `
+        </form>
+        <form method="POST" action="/profile/avatar/remove" class="avatar-remove-form">
+          <button type="submit" class="btn btn-link">Remove picture</button>
+        </form>
+      ` : '</form>'}
+    <small>Max 2MB. JPG, PNG, GIF, or WebP.</small>
+  </div>
+
+  <hr class="divider">
+
   <form method="POST" action="/profile" class="auth-form">
     <div class="form-group">
       <label for="name">Name</label>
@@ -12,7 +37,7 @@
       <small>This is how you appear to others</small>
     </div>
 
-    <button type="submit" class="btn btn-primary btn-block">Save Changes</button>
+    <button type="submit" class="btn btn-primary btn-block">Save Name</button>
   </form>
 </div>
 ` }) %>
