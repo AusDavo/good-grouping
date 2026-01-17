@@ -19,7 +19,7 @@
 <div class="grid gap-6">
   ${crownGameTypes.map(gameType => {
     const crown = allCrowns.find(c => c.game_type === gameType);
-    const typeIcon = gameType === 'Cricket' ? '\\u{1F997}' : gameType === '301' || gameType === '501' ? '\\u{1F3AF}' : gameType === 'Around the World' ? '\\u{1F30D}' : '\\u{1F3B2}';
+    const typeIcon = gameType === 'Cricket' ? '🦗' : gameType === '301' || gameType === '501' ? '🎯' : gameType === 'Around the World' ? '🌍' : '🎲';
 
     if (crown) {
       const avatar = crown.holder_avatar_url
