@@ -70,7 +70,10 @@
             <div id="notification-panel" class="hidden absolute right-0 mt-2 w-80 card rounded-xl shadow-xl z-50">
               <div class="chalk-header rounded-t-lg flex justify-between items-center">
                 <span class="font-pub-heading text-pub-chalk-text">Notifications</span>
-                <a href="/notifications" class="text-sm text-neon-blue hover:text-neon-pink transition-colors">View all</a>
+                <div class="flex items-center gap-3">
+                  <button id="clear-all-notifications" class="text-sm text-pub-chalk-accent hover:text-neon-orange transition-colors hidden">Clear</button>
+                  <a href="/notifications" class="text-sm text-neon-blue hover:text-neon-pink transition-colors">View all</a>
+                </div>
               </div>
               <div id="notification-list" class="max-h-96 overflow-y-auto scrollbar-pub p-2">
                 <div class="p-4 text-center text-pub-chalk-accent">Loading...</div>

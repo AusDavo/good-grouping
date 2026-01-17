@@ -3,6 +3,7 @@ document.addEventListener('DOMContentLoaded', function() {
   const panel = document.getElementById('notification-panel');
   const badge = document.getElementById('notification-badge');
   const list = document.getElementById('notification-list');
+  const clearBtn = document.getElementById('clear-all-notifications');
 
   if (!bell || !panel) return;
 
@@ -64,9 +65,26 @@ document.addEventListener('DOMContentLoaded', function() {
     if (count > 0) {
       badge.textContent = count > 9 ? '9+' : count;
       badge.classList.remove('hidden');
+      if (clearBtn) clearBtn.classList.remove('hidden');
     } else {
       badge.classList.add('hidden');
+      if (clearBtn) clearBtn.classList.add('hidden');
     }
+  }
+
+  // Clear all notifications
+  if (clearBtn) {
+    clearBtn.addEventListener('click', async (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      try {
+        await fetch('/notifications/mark-all-read', { method: 'POST' });
+        await loadNotifications();
+        updateBadge(0);
+      } catch (error) {
+        console.error('Failed to clear notifications:', error);
+      }
+    });
   }
 
   function formatRelativeTime(dateStr) {
