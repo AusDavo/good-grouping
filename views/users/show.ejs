@@ -34,11 +34,22 @@
             <p class="text-3xl font-pub-display text-neon-green" style="text-shadow: 0 0 10px #39ff14;">${stats.wins}</p>
             <p class="text-xs text-pub-chalk-accent uppercase tracking-wider font-pub-heading">Wins</p>
           </div>
+          <!-- Crowns Stat -->
+          <div class="text-center">
+            <p class="text-3xl font-pub-display text-neon-yellow" style="text-shadow: 0 0 10px #facc15;">${userCrowns.length}</p>
+            <p class="text-xs text-pub-chalk-accent uppercase tracking-wider font-pub-heading">Crowns</p>
+          </div>
         </div>
       </div>
     </div>
   </div>
 </div>
+
+<!-- Crowns Section -->
+${userCrowns.length > 0 ? '<div class="mb-8"><h2 class="text-lg font-pub-heading font-semibold text-pub-chalk-text mb-4 flex items-center gap-2"><span class="text-2xl">👑</span> Crowns Held</h2><div class="grid grid-cols-2 sm:grid-cols-4 gap-3">' + userCrowns.map(crown => {
+  const typeIcon = crown.game_type === 'Cricket' ? '🦗' : crown.game_type === '301' || crown.game_type === '501' ? '🎯' : crown.game_type === 'Around the World' ? '🌍' : '🎲';
+  return '<div class="card p-4 text-center border-neon-yellow/30 bg-neon-yellow/10"><span class="text-3xl block mb-2">' + typeIcon + '</span><span class="text-neon-yellow font-pub-heading font-bold">' + crown.game_type + '</span><p class="text-xs text-pub-chalk-accent mt-1">Since ' + new Date(crown.acquired_at).toLocaleDateString() + '</p></div>';
+}).join('') + '</div></div>' : ''}
 
 <!-- Recent Games Section -->
 ${games.length > 0 ? '<div><h2 class="text-lg font-pub-heading font-semibold text-pub-chalk-text mb-4 flex items-center gap-2"><span class="text-neon-pink">📜</span> Recent Games</h2><div class="space-y-3">' + games.map(game => {

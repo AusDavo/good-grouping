@@ -3,7 +3,7 @@ require('dotenv').config();
 const express = require('express');
 const session = require('express-session');
 const path = require('path');
-const { games, getOrCreateSetupToken } = require('./db');
+const { games, crowns, getOrCreateSetupToken } = require('./db');
 const { loadUser } = require('./middleware/auth');
 
 const app = express();
@@ -70,10 +70,32 @@ app.get('/', (req, res) => {
   }
 
   const recentGames = games.findRecent(20);
+  const allCrowns = crowns.findAll();
+  // Build a map of game_type -> crown holder for easy lookup
+  const crownHolders = {};
+  allCrowns.forEach(c => {
+    crownHolders[c.game_type] = c;
+  });
 
   res.render('index', {
     title: 'Home',
     games: recentGames,
+    crownHolders,
+  });
+});
+
+// Crowns leaderboard page
+app.get('/crowns', (req, res) => {
+  if (!req.user) {
+    return res.redirect('/login');
+  }
+
+  const allCrowns = crowns.findAll();
+
+  res.render('crowns', {
+    title: 'Crowns',
+    allCrowns,
+    crownGameTypes: crowns.GAME_TYPES,
   });
 });
 

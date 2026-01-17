@@ -83,6 +83,16 @@ db.exec(`
       FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
     );
 
+    CREATE TABLE IF NOT EXISTS crowns (
+      id TEXT PRIMARY KEY,
+      game_type TEXT UNIQUE NOT NULL,
+      holder_user_id TEXT NOT NULL,
+      acquired_at TEXT DEFAULT (datetime('now')),
+      acquired_in_game_id TEXT,
+      FOREIGN KEY (holder_user_id) REFERENCES users(id),
+      FOREIGN KEY (acquired_in_game_id) REFERENCES games(id)
+    );
+
     CREATE INDEX IF NOT EXISTS idx_passkeys_user_id ON passkeys(user_id);
     CREATE INDEX IF NOT EXISTS idx_passkeys_credential_id ON passkeys(credential_id);
     CREATE INDEX IF NOT EXISTS idx_invitations_token ON invitations(token);
@@ -90,6 +100,7 @@ db.exec(`
     CREATE INDEX IF NOT EXISTS idx_game_players_game_id ON game_players(game_id);
     CREATE INDEX IF NOT EXISTS idx_notifications_user ON notifications(user_id, read_at);
     CREATE INDEX IF NOT EXISTS idx_push_subscriptions_user_id ON push_subscriptions(user_id);
+    CREATE INDEX IF NOT EXISTS idx_crowns_holder ON crowns(holder_user_id);
 `);
 
 // Migration: Add avatar_url column if it doesn't exist
@@ -288,6 +299,41 @@ const pushSubscriptionQueries = {
   deleteByUserId: db.prepare('DELETE FROM push_subscriptions WHERE user_id = ?'),
 };
 
+// Crown queries
+const crownQueries = {
+  findByGameType: db.prepare(`
+    SELECT c.*, u.name as holder_name, u.avatar_url as holder_avatar_url
+    FROM crowns c
+    JOIN users u ON c.holder_user_id = u.id
+    WHERE c.game_type = ?
+  `),
+
+  findByUserId: db.prepare(`
+    SELECT c.*, u.name as holder_name, u.avatar_url as holder_avatar_url
+    FROM crowns c
+    JOIN users u ON c.holder_user_id = u.id
+    WHERE c.holder_user_id = ?
+  `),
+
+  findAll: db.prepare(`
+    SELECT c.*, u.name as holder_name, u.avatar_url as holder_avatar_url
+    FROM crowns c
+    JOIN users u ON c.holder_user_id = u.id
+    ORDER BY c.game_type
+  `),
+
+  create: db.prepare(`
+    INSERT INTO crowns (id, game_type, holder_user_id, acquired_at, acquired_in_game_id)
+    VALUES (?, ?, ?, datetime('now'), ?)
+  `),
+
+  update: db.prepare(`
+    UPDATE crowns
+    SET holder_user_id = ?, acquired_at = datetime('now'), acquired_in_game_id = ?
+    WHERE game_type = ?
+  `),
+};
+
 // Helper functions
 const users = {
   create(name, isAdmin = false) {
@@ -438,6 +484,56 @@ const pushSubscriptions = {
   deleteByUserId: (userId) => pushSubscriptionQueries.deleteByUserId.run(userId),
 };
 
+// Designated game types that have crowns (excludes "Other")
+const CROWN_GAME_TYPES = ['Cricket', '301', '501', 'Around the World'];
+
+const crowns = {
+  GAME_TYPES: CROWN_GAME_TYPES,
+
+  findByGameType: (gameType) => crownQueries.findByGameType.get(gameType),
+  findByUserId: (userId) => crownQueries.findByUserId.all(userId),
+  findAll: () => crownQueries.findAll.all(),
+
+  // Award or transfer a crown based on game result
+  // playerIds: array of user IDs who participated in the game
+  // Returns { awarded: boolean, previousHolder: object|null } if crown changed hands
+  processGameResult(gameType, winnerId, gameId, playerIds) {
+    // Only process designated game types
+    if (!CROWN_GAME_TYPES.includes(gameType)) {
+      return { awarded: false, previousHolder: null };
+    }
+
+    const currentCrown = crownQueries.findByGameType.get(gameType);
+
+    if (!currentCrown) {
+      // No one holds this crown yet - award it to the winner
+      const id = uuidv4();
+      crownQueries.create.run(id, gameType, winnerId, gameId);
+      return { awarded: true, previousHolder: null };
+    }
+
+    if (currentCrown.holder_user_id === winnerId) {
+      // Winner already holds the crown - no change
+      return { awarded: false, previousHolder: null };
+    }
+
+    // Check if the crown holder participated in this game
+    const crownHolderPlayed = playerIds.includes(currentCrown.holder_user_id);
+    if (!crownHolderPlayed) {
+      // Crown holder wasn't in this game - crown stays with them
+      return { awarded: false, previousHolder: null };
+    }
+
+    // Crown holder was in the game and was defeated - transfer the crown
+    const previousHolder = {
+      id: currentCrown.holder_user_id,
+      name: currentCrown.holder_name,
+    };
+    crownQueries.update.run(winnerId, gameId, gameType);
+    return { awarded: true, previousHolder };
+  },
+};
+
 // Bootstrap setup token for first admin
 function getOrCreateSetupToken() {
   if (users.count() > 0) return null;
@@ -471,5 +567,6 @@ module.exports = {
   games,
   notifications,
   pushSubscriptions,
+  crowns,
   getOrCreateSetupToken,
 };

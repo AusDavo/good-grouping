@@ -1,5 +1,5 @@
 const express = require('express');
-const { games, users, notifications } = require('../db');
+const { games, users, notifications, crowns } = require('../db');
 const { requireAuth } = require('../middleware/auth');
 const { notifyGameCreated } = require('../pushService');
 
@@ -97,6 +97,39 @@ router.post('/', (req, res) => {
     notifyGameCreated(createdGame, playerData, req.user.name).catch(err => {
       console.error('Push notification error:', err);
     });
+
+    // Process crown transfer if there's a single winner
+    const winner = playerData.find(p => p.isWinner);
+    if (winner) {
+      const playerIds = playerData.map(p => p.userId);
+      const crownResult = crowns.processGameResult(normalizedGameType, winner.userId, gameId, playerIds);
+      if (crownResult.awarded) {
+        const winnerUser = users.findById(winner.userId);
+        if (crownResult.previousHolder) {
+          // Crown was taken from previous holder
+          notifications.create(
+            winner.userId,
+            'crown_won',
+            gameId,
+            `You claimed the ${normalizedGameType} crown from ${crownResult.previousHolder.name}!`
+          );
+          notifications.create(
+            crownResult.previousHolder.id,
+            'crown_lost',
+            gameId,
+            `${winnerUser.name} has taken your ${normalizedGameType} crown!`
+          );
+        } else {
+          // First ever crown holder
+          notifications.create(
+            winner.userId,
+            'crown_won',
+            gameId,
+            `You are the first to claim the ${normalizedGameType} crown!`
+          );
+        }
+      }
+    }
 
     res.redirect(`/games/${gameId}`);
   } catch (error) {

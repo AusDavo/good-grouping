@@ -1,5 +1,5 @@
 const express = require('express');
-const { users, games } = require('../db');
+const { users, games, crowns } = require('../db');
 const { requireAuth } = require('../middleware/auth');
 
 const router = express.Router();
@@ -27,10 +27,14 @@ router.get('/:id', (req, res) => {
     g.players.some(p => p.user_id === profileUser.id && p.is_winner)
   ).length;
 
+  // Get user's crowns
+  const userCrowns = crowns.findByUserId(profileUser.id);
+
   res.render('users/show', {
     title: profileUser.name,
     profileUser,
     games: userGames,
+    userCrowns,
     stats: {
       totalGames,
       wins,

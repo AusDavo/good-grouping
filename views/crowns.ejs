@@ -1,0 +1,60 @@
+<%- include('layout', { body: `
+<div class="mb-8">
+  <a href="/" class="btn btn-secondary btn-sm inline-flex items-center gap-2 mb-6">
+    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
+    </svg>
+    Back to Board
+  </a>
+
+  <!-- Crowns Header -->
+  <div class="card-wood p-8 text-center">
+    <div class="text-6xl mb-4">👑</div>
+    <h1 class="text-3xl font-pub-heading font-bold text-neon-yellow mb-2" style="text-shadow: 0 0 20px #facc15;">The Crowns</h1>
+    <p class="text-pub-chalk-accent">Win a game type to claim the crown. Defend it or lose it!</p>
+  </div>
+</div>
+
+<!-- Crown Cards -->
+<div class="grid gap-6">
+  ${crownGameTypes.map(gameType => {
+    const crown = allCrowns.find(c => c.game_type === gameType);
+    const typeIcon = gameType === 'Cricket' ? '\\u{1F997}' : gameType === '301' || gameType === '501' ? '\\u{1F3AF}' : gameType === 'Around the World' ? '\\u{1F30D}' : '\\u{1F3B2}';
+
+    if (crown) {
+      const avatar = crown.holder_avatar_url
+        ? '<img src="' + crown.holder_avatar_url + '" alt="" class="w-16 h-16 rounded-full object-cover ring-4 ring-neon-yellow shadow-lg">'
+        : '<div class="w-16 h-16 rounded-full bg-pub-green-700 flex items-center justify-center ring-4 ring-neon-yellow"><span class="text-2xl font-bold text-neon-green">' + crown.holder_name.charAt(0).toUpperCase() + '</span></div>';
+
+      return '<div class="card p-6 border-neon-yellow/30 bg-gradient-to-br from-neon-yellow/10 to-transparent"><div class="flex items-center gap-6"><div class="text-5xl">' + typeIcon + '</div><div class="flex-1"><h2 class="text-xl font-pub-heading font-bold text-neon-yellow mb-1">' + gameType + ' Crown</h2><p class="text-pub-chalk-accent text-sm">Current Champion</p></div><a href="/users/' + crown.holder_user_id + '" class="flex flex-col items-center gap-2 group"><div class="relative">' + avatar + '<span class="absolute -top-2 -right-2 text-2xl">👑</span></div><span class="font-pub-heading text-neon-yellow group-hover:text-neon-pink transition-colors">' + crown.holder_name + '</span><span class="text-xs text-pub-chalk-accent">Since ' + new Date(crown.acquired_at).toLocaleDateString() + '</span></a></div></div>';
+    } else {
+      return '<div class="card p-6 border-dashed border-2 border-pub-wood-medium/50 bg-pub-brown-800/50"><div class="flex items-center gap-6"><div class="text-5xl opacity-50">' + typeIcon + '</div><div class="flex-1"><h2 class="text-xl font-pub-heading font-bold text-pub-chalk-accent mb-1">' + gameType + ' Crown</h2><p class="text-pub-chalk-accent/70 text-sm">Unclaimed</p></div><div class="flex flex-col items-center gap-2"><div class="w-16 h-16 rounded-full bg-pub-wood-medium/30 flex items-center justify-center border-2 border-dashed border-pub-wood-medium"><span class="text-3xl opacity-30">👑</span></div><span class="text-pub-chalk-accent/70 text-sm">Win to claim!</span></div></div></div>';
+    }
+  }).join('')}
+</div>
+
+<!-- How It Works Section -->
+<div class="card p-6 mt-8">
+  <h2 class="text-lg font-pub-heading font-bold text-pub-chalk-text mb-4 flex items-center gap-2">
+    <span class="text-neon-blue">?</span> How Crowns Work
+  </h2>
+  <div class="space-y-3 text-pub-chalk-accent text-sm">
+    <div class="flex items-start gap-3">
+      <span class="text-neon-green font-bold">1.</span>
+      <p>Each game type (Cricket, 301, 501, Around the World) has its own crown.</p>
+    </div>
+    <div class="flex items-start gap-3">
+      <span class="text-neon-green font-bold">2.</span>
+      <p>The first player to win a game type claims that crown.</p>
+    </div>
+    <div class="flex items-start gap-3">
+      <span class="text-neon-green font-bold">3.</span>
+      <p>You keep the crown until someone defeats you in that game type.</p>
+    </div>
+    <div class="flex items-start gap-3">
+      <span class="text-neon-green font-bold">4.</span>
+      <p>When you lose, the crown passes to your victor. Defend your titles!</p>
+    </div>
+  </div>
+</div>
+` }) %>
