@@ -1,5 +1,5 @@
 const express = require('express');
-const { games, users, notifications, crowns } = require('../db');
+const { games, users, notifications, crowns, gameDeletions } = require('../db');
 const { requireAuth } = require('../middleware/auth');
 const { notifyGameCreated } = require('../pushService');
 
@@ -154,9 +154,16 @@ router.get('/:id', (req, res) => {
     });
   }
 
+  // Get deletion approvals if there's a pending deletion request
+  let deletionApprovals = [];
+  if (game.deletion_requested_by) {
+    deletionApprovals = gameDeletions.findApprovals(game.id);
+  }
+
   res.render('games/show', {
     title: `Game - ${game.game_type}`,
     game,
+    deletionApprovals,
   });
 });
 
@@ -187,7 +194,7 @@ router.post('/:id/confirm', (req, res) => {
   res.redirect(`/games/${req.params.id}`);
 });
 
-// Delete game (only creator or admin)
+// Delete game (multi-approval flow for participants)
 router.post('/:id/delete', (req, res) => {
   const game = games.findById(req.params.id);
 
@@ -198,15 +205,148 @@ router.post('/:id/delete', (req, res) => {
     });
   }
 
-  if (game.created_by !== req.user.id && !req.user.is_admin) {
+  // Check if user is a participant or admin
+  const isParticipant = game.players.some(p => p.user_id === req.user.id);
+  if (!isParticipant && !req.user.is_admin) {
     return res.status(403).render('error', {
       title: 'Access Denied',
-      message: 'You can only delete games you created',
+      message: 'Only participants can request game deletion',
     });
   }
 
-  games.delete(req.params.id);
-  res.redirect('/');
+  // Admins can always delete immediately
+  if (req.user.is_admin) {
+    // Notify participants about deletion
+    for (const player of game.players) {
+      if (player.user_id !== req.user.id) {
+        notifications.create(
+          player.user_id,
+          'game_deleted',
+          null,
+          `${req.user.name} (admin) deleted the ${game.game_type} game from ${new Date(game.played_at).toLocaleDateString()}.`
+        );
+      }
+    }
+    games.delete(req.params.id);
+    return res.redirect('/');
+  }
+
+  // Count confirmations
+  const confirmedCount = game.players.filter(p => p.confirmed_at).length;
+
+  // If only 1 confirmation, single participant can delete
+  if (confirmedCount <= 1) {
+    // Notify participants about deletion
+    for (const player of game.players) {
+      if (player.user_id !== req.user.id) {
+        notifications.create(
+          player.user_id,
+          'game_deleted',
+          null,
+          `${req.user.name} deleted the ${game.game_type} game from ${new Date(game.played_at).toLocaleDateString()}.`
+        );
+      }
+    }
+    games.delete(req.params.id);
+    return res.redirect('/');
+  }
+
+  // Multi-confirmed game: request deletion and add first approval
+  gameDeletions.requestDeletion(game.id, req.user.id);
+  gameDeletions.addApproval(game.id, req.user.id);
+
+  // Notify other participants about deletion request
+  for (const player of game.players) {
+    if (player.user_id !== req.user.id) {
+      notifications.create(
+        player.user_id,
+        'deletion_requested',
+        game.id,
+        `${req.user.name} has requested to delete the ${game.game_type} game from ${new Date(game.played_at).toLocaleDateString()}. Your approval is needed.`
+      );
+    }
+  }
+
+  res.redirect(`/games/${req.params.id}`);
+});
+
+// Approve pending deletion
+router.post('/:id/approve-deletion', (req, res) => {
+  const game = games.findById(req.params.id);
+
+  if (!game) {
+    return res.status(404).render('error', {
+      title: 'Not Found',
+      message: 'Game not found',
+    });
+  }
+
+  if (!game.deletion_requested_by) {
+    return res.status(400).render('error', {
+      title: 'Error',
+      message: 'No deletion request pending for this game',
+    });
+  }
+
+  // Check if user is a participant
+  const isParticipant = game.players.some(p => p.user_id === req.user.id);
+  if (!isParticipant) {
+    return res.status(403).render('error', {
+      title: 'Access Denied',
+      message: 'Only participants can approve game deletion',
+    });
+  }
+
+  // Add approval
+  gameDeletions.addApproval(game.id, req.user.id);
+
+  // Check if we have 2 approvals
+  const approvalCount = gameDeletions.countApprovals(game.id);
+  if (approvalCount >= 2) {
+    // Notify participants about deletion
+    for (const player of game.players) {
+      notifications.create(
+        player.user_id,
+        'game_deleted',
+        null,
+        `The ${game.game_type} game from ${new Date(game.played_at).toLocaleDateString()} has been deleted with multiple approvals.`
+      );
+    }
+    games.delete(req.params.id);
+    return res.redirect('/');
+  }
+
+  res.redirect(`/games/${req.params.id}`);
+});
+
+// Cancel deletion request (only requester can cancel)
+router.post('/:id/cancel-deletion', (req, res) => {
+  const game = games.findById(req.params.id);
+
+  if (!game) {
+    return res.status(404).render('error', {
+      title: 'Not Found',
+      message: 'Game not found',
+    });
+  }
+
+  if (!game.deletion_requested_by) {
+    return res.status(400).render('error', {
+      title: 'Error',
+      message: 'No deletion request pending for this game',
+    });
+  }
+
+  // Only the requester can cancel
+  if (game.deletion_requested_by !== req.user.id) {
+    return res.status(403).render('error', {
+      title: 'Access Denied',
+      message: 'Only the requester can cancel the deletion request',
+    });
+  }
+
+  gameDeletions.cancelDeletion(game.id);
+  res.redirect(`/games/${req.params.id}`);
 });
 
 module.exports = router;

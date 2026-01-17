@@ -849,6 +849,7 @@ select.input{
   --tw-shadow: 0 4px 20px rgba(139, 111, 86, 0.4);
   --tw-shadow-colored: 0 4px 20px var(--tw-shadow-color);
   box-shadow: var(--tw-ring-offset-shadow, 0 0 #0000), var(--tw-ring-shadow, 0 0 #0000), var(--tw-shadow);
+  flex-shrink: 0;
   transform: rotate(-2deg);
 }
 

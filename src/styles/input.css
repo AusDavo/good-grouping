@@ -138,7 +138,7 @@
 
   /* Polaroid-style avatar frame */
   .avatar-polaroid {
-    @apply bg-aged-cream p-1 pb-3 shadow-warm;
+    @apply bg-aged-cream p-1 pb-3 shadow-warm flex-shrink-0;
     transform: rotate(-2deg);
   }
 

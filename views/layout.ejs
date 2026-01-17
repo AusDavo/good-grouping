@@ -35,8 +35,18 @@
           </a>
 
           <% if (user.is_admin) { %>
-            <!-- Admin Invites Link -->
-            <a href="/admin/invites" class="text-aged-cream hover:text-neon-yellow transition-colors duration-200 text-sm font-pub-heading uppercase tracking-wide">
+            <!-- Admin icon for mobile -->
+            <a href="/admin/users" class="sm:hidden text-aged-cream hover:text-neon-yellow transition-colors duration-200" title="Admin">
+              <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+              </svg>
+            </a>
+            <!-- Admin Links - visible on larger screens -->
+            <a href="/admin/users" class="hidden sm:inline text-aged-cream hover:text-neon-yellow transition-colors duration-200 text-sm font-pub-heading uppercase tracking-wide">
+              Users
+            </a>
+            <a href="/admin/invites" class="hidden sm:inline text-aged-cream hover:text-neon-yellow transition-colors duration-200 text-sm font-pub-heading uppercase tracking-wide">
               Invites
             </a>
           <% } %>
@@ -71,11 +81,13 @@
           <!-- User Profile Link -->
           <a href="/profile" class="flex items-center gap-2 group">
             <% if (user.avatar_url) { %>
-              <div class="avatar-polaroid">
+              <!-- Simple circle on mobile, polaroid on larger screens -->
+              <img src="<%= user.avatar_url %>" alt="" class="rounded-full object-cover ring-2 ring-neon-green sm:hidden" style="width:32px;height:32px;min-width:32px">
+              <div class="avatar-polaroid hidden sm:block">
                 <img src="<%= user.avatar_url %>" alt="" class="w-8 h-8 rounded-polaroid object-cover">
               </div>
             <% } else { %>
-              <div class="w-10 h-10 rounded-full bg-pub-green-700 flex items-center justify-center border-2 border-neon-green group-hover:shadow-neon-green transition-all duration-200">
+              <div class="w-8 h-8 rounded-full bg-pub-green-700 flex items-center justify-center border-2 border-neon-green group-hover:shadow-neon-green transition-all duration-200">
                 <span class="text-sm font-bold text-neon-green"><%= user.name.charAt(0).toUpperCase() %></span>
               </div>
             <% } %>

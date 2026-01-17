@@ -124,6 +124,39 @@ try {
   // Column already exists, ignore
 }
 
+// Migration: Add deleted_at column to users for soft delete
+try {
+  db.exec('ALTER TABLE users ADD COLUMN deleted_at TEXT');
+} catch (e) {
+  // Column already exists, ignore
+}
+
+// Migration: Add game deletion request columns
+try {
+  db.exec('ALTER TABLE games ADD COLUMN deletion_requested_by TEXT');
+} catch (e) {
+  // Column already exists, ignore
+}
+try {
+  db.exec('ALTER TABLE games ADD COLUMN deletion_requested_at TEXT');
+} catch (e) {
+  // Column already exists, ignore
+}
+
+// Create game_deletion_approvals table
+db.exec(`
+  CREATE TABLE IF NOT EXISTS game_deletion_approvals (
+    id TEXT PRIMARY KEY,
+    game_id TEXT NOT NULL,
+    user_id TEXT NOT NULL,
+    approved_at TEXT DEFAULT (datetime('now')),
+    FOREIGN KEY (game_id) REFERENCES games(id) ON DELETE CASCADE,
+    FOREIGN KEY (user_id) REFERENCES users(id),
+    UNIQUE(game_id, user_id)
+  );
+  CREATE INDEX IF NOT EXISTS idx_game_deletion_approvals_game ON game_deletion_approvals(game_id);
+`);
+
 // User queries
 const userQueries = {
   create: db.prepare(`
@@ -134,9 +167,13 @@ const userQueries = {
   findById: db.prepare('SELECT * FROM users WHERE id = ?'),
   findByName: db.prepare('SELECT * FROM users WHERE name = ?'),
   findAll: db.prepare('SELECT * FROM users ORDER BY name'),
+  findAllActive: db.prepare('SELECT * FROM users WHERE deleted_at IS NULL ORDER BY name'),
   countAll: db.prepare('SELECT COUNT(*) as count FROM users'),
+  countAdmins: db.prepare('SELECT COUNT(*) as count FROM users WHERE is_admin = 1 AND deleted_at IS NULL'),
   updateName: db.prepare('UPDATE users SET name = ? WHERE id = ?'),
   updateAvatar: db.prepare('UPDATE users SET avatar_url = ? WHERE id = ?'),
+  setAdmin: db.prepare('UPDATE users SET is_admin = ? WHERE id = ?'),
+  softDelete: db.prepare('UPDATE users SET deleted_at = datetime(\'now\') WHERE id = ?'),
 };
 
 // Passkey queries
@@ -332,6 +369,54 @@ const crownQueries = {
     SET holder_user_id = ?, acquired_at = datetime('now'), acquired_in_game_id = ?
     WHERE game_type = ?
   `),
+
+  clearGameReference: db.prepare(`
+    UPDATE crowns SET acquired_in_game_id = NULL WHERE acquired_in_game_id = ?
+  `),
+
+  deleteByGameId: db.prepare(`
+    DELETE FROM crowns WHERE acquired_in_game_id = ?
+  `),
+};
+
+// Game deletion approval queries
+const gameDeletionQueries = {
+  requestDeletion: db.prepare(`
+    UPDATE games SET deletion_requested_by = ?, deletion_requested_at = datetime('now')
+    WHERE id = ?
+  `),
+
+  cancelDeletion: db.prepare(`
+    UPDATE games SET deletion_requested_by = NULL, deletion_requested_at = NULL
+    WHERE id = ?
+  `),
+
+  addApproval: db.prepare(`
+    INSERT OR IGNORE INTO game_deletion_approvals (id, game_id, user_id)
+    VALUES (?, ?, ?)
+  `),
+
+  findApprovals: db.prepare(`
+    SELECT gda.*, u.name as user_name
+    FROM game_deletion_approvals gda
+    JOIN users u ON gda.user_id = u.id
+    WHERE gda.game_id = ?
+  `),
+
+  countApprovals: db.prepare(`
+    SELECT COUNT(*) as count FROM game_deletion_approvals WHERE game_id = ?
+  `),
+
+  deleteApprovals: db.prepare(`
+    DELETE FROM game_deletion_approvals WHERE game_id = ?
+  `),
+
+  findGamesWithPendingDeletion: db.prepare(`
+    SELECT g.id, g.deletion_requested_by, g.deletion_requested_at, u.name as requester_name
+    FROM games g
+    JOIN users u ON g.deletion_requested_by = u.id
+    WHERE g.deletion_requested_by IS NOT NULL
+  `),
 };
 
 // Helper functions
@@ -344,9 +429,13 @@ const users = {
   findById: (id) => userQueries.findById.get(id),
   findByName: (name) => userQueries.findByName.get(name),
   findAll: () => userQueries.findAll.all(),
+  findAllActive: () => userQueries.findAllActive.all(),
   count: () => userQueries.countAll.get().count,
+  countAdmins: () => userQueries.countAdmins.get().count,
   updateName: (id, name) => userQueries.updateName.run(name, id),
   updateAvatar: (id, avatarUrl) => userQueries.updateAvatar.run(avatarUrl, id),
+  setAdmin: (id, isAdmin) => userQueries.setAdmin.run(isAdmin ? 1 : 0, id),
+  softDelete: (id) => userQueries.softDelete.run(id),
 };
 
 const passkeys = {
@@ -449,7 +538,11 @@ const games = {
     });
   },
 
-  delete: (id) => gameQueries.delete.run(id),
+  delete: (id) => {
+    // Delete any crowns awarded in this game before deleting
+    crownQueries.deleteByGameId.run(id);
+    return gameQueries.delete.run(id);
+  },
 
   confirmForUser(gameId, userId) {
     return gamePlayerQueries.confirmGame.run(gameId, userId);
@@ -534,6 +627,27 @@ const crowns = {
   },
 };
 
+// Game deletion approval helpers
+const gameDeletions = {
+  requestDeletion(gameId, userId) {
+    return gameDeletionQueries.requestDeletion.run(userId, gameId);
+  },
+
+  cancelDeletion(gameId) {
+    gameDeletionQueries.deleteApprovals.run(gameId);
+    return gameDeletionQueries.cancelDeletion.run(gameId);
+  },
+
+  addApproval(gameId, userId) {
+    const id = uuidv4();
+    return gameDeletionQueries.addApproval.run(id, gameId, userId);
+  },
+
+  findApprovals: (gameId) => gameDeletionQueries.findApprovals.all(gameId),
+  countApprovals: (gameId) => gameDeletionQueries.countApprovals.get(gameId).count,
+  findGamesWithPendingDeletion: () => gameDeletionQueries.findGamesWithPendingDeletion.all(),
+};
+
 // Bootstrap setup token for first admin
 function getOrCreateSetupToken() {
   if (users.count() > 0) return null;
@@ -568,5 +682,6 @@ module.exports = {
   notifications,
   pushSubscriptions,
   crowns,
+  gameDeletions,
   getOrCreateSetupToken,
 };

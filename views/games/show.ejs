@@ -13,6 +13,27 @@
   </h1>
 </div>
 
+${(() => {
+  if (!game.deletion_requested_by) return '';
+  const requester = game.players.find(p => p.user_id === game.deletion_requested_by);
+  const requesterName = requester ? requester.name : 'Someone';
+  const isRequester = typeof user !== 'undefined' && user && game.deletion_requested_by === user.id;
+  const isParticipant = typeof user !== 'undefined' && user && game.players.some(p => p.user_id === user.id);
+  const hasApproved = typeof deletionApprovals !== 'undefined' && typeof user !== 'undefined' && user && deletionApprovals.some(a => a.user_id === user.id);
+  const approvalCount = typeof deletionApprovals !== 'undefined' ? deletionApprovals.length : 0;
+
+  let actionButtons = '';
+  if (isRequester) {
+    actionButtons = '<form action="/games/' + game.id + '/cancel-deletion" method="POST" class="inline"><button type="submit" class="btn btn-secondary btn-sm">Cancel Request</button></form>';
+  } else if (isParticipant && !hasApproved) {
+    actionButtons = '<form action="/games/' + game.id + '/approve-deletion" method="POST" class="inline" onsubmit="return confirm(&apos;Approve deletion of this game? This cannot be undone.&apos;)"><button type="submit" class="btn btn-danger btn-sm">Approve Deletion</button></form>';
+  } else if (hasApproved) {
+    actionButtons = '<span class="text-sm text-neon-orange">You approved deletion</span>';
+  }
+
+  return '<div class="mb-6 p-4 bg-neon-orange/20 border-2 border-neon-orange/50 rounded-lg"><div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4"><div class="flex items-center gap-3"><svg class="w-6 h-6 text-neon-orange flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" /></svg><div><p class="text-neon-orange font-pub-heading font-semibold">Deletion Requested</p><p class="text-pub-chalk-accent text-sm">' + requesterName + ' has requested to delete this game. Needs ' + (2 - approvalCount) + ' more approval(s).</p></div></div><div>' + actionButtons + '</div></div></div>';
+})()}
+
 <!-- Main Game Card -->
 <div class="card overflow-hidden">
   <!-- Game Meta Info -->
@@ -101,6 +122,23 @@
 
   ${game.notes ? '<div class="p-6 border-t-2 border-pub-wood-medium/50 bg-pub-brown-800/30"><h2 class="text-lg font-pub-heading font-semibold text-pub-chalk-text mb-3 flex items-center gap-2"><span>💬</span> Match Notes</h2><div class="speech-bubble"><p class="text-pub-chalk-text italic">"' + game.notes + '"</p></div></div>' : ''}
 
-  ${(typeof user !== 'undefined' && user && (game.created_by === user.id || user.is_admin)) ? '<div class="p-6 border-t-2 border-pub-wood-medium/50 bg-pub-brown-900/30"><form action="/games/' + game.id + '/delete" method="POST" onsubmit="return confirm(&apos;Rub this one off the board? This cannot be undone.&apos;)"><button type="submit" class="btn btn-danger inline-flex items-center gap-2"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>Erase Game</button></form></div>' : ''}
+  ${(() => {
+  if (typeof user === 'undefined' || !user) return '';
+  const isParticipant = game.players.some(p => p.user_id === user.id);
+  const isAdmin = user.is_admin;
+  if (!isParticipant && !isAdmin) return '';
+
+  // Don't show delete if there's already a pending deletion request
+  if (game.deletion_requested_by) return '';
+
+  const confirmedCount = game.players.filter(p => p.confirmed_at).length;
+  const needsApproval = confirmedCount >= 2 && !isAdmin;
+  const buttonText = needsApproval ? 'Request Deletion' : 'Erase Game';
+  const confirmMsg = needsApproval
+    ? 'Request to delete this game? Another participant will need to approve.'
+    : 'Rub this one off the board? This cannot be undone.';
+
+  return '<div class="p-6 border-t-2 border-pub-wood-medium/50 bg-pub-brown-900/30"><form action="/games/' + game.id + '/delete" method="POST" onsubmit="return confirm(&apos;' + confirmMsg + '&apos;)"><button type="submit" class="btn btn-danger inline-flex items-center gap-2"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>' + buttonText + '</button></form></div>';
+})()}
 </div>
 ` }) %>
