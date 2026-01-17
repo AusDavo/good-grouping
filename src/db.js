@@ -143,6 +143,13 @@ try {
   // Column already exists, ignore
 }
 
+// Migration: Add nostr_pubkey column to users for Nostr login
+try {
+  db.exec('ALTER TABLE users ADD COLUMN nostr_pubkey TEXT UNIQUE');
+} catch (e) {
+  // Column already exists, ignore
+}
+
 // Create game_deletion_approvals table
 db.exec(`
   CREATE TABLE IF NOT EXISTS game_deletion_approvals (
@@ -166,6 +173,7 @@ const userQueries = {
 
   findById: db.prepare('SELECT * FROM users WHERE id = ?'),
   findByName: db.prepare('SELECT * FROM users WHERE name = ?'),
+  findByNostrPubkey: db.prepare('SELECT * FROM users WHERE nostr_pubkey = ?'),
   findAll: db.prepare('SELECT * FROM users ORDER BY name'),
   findAllActive: db.prepare('SELECT * FROM users WHERE deleted_at IS NULL ORDER BY name'),
   countAll: db.prepare('SELECT COUNT(*) as count FROM users'),
@@ -174,6 +182,8 @@ const userQueries = {
   updateAvatar: db.prepare('UPDATE users SET avatar_url = ? WHERE id = ?'),
   setAdmin: db.prepare('UPDATE users SET is_admin = ? WHERE id = ?'),
   softDelete: db.prepare('UPDATE users SET deleted_at = datetime(\'now\') WHERE id = ?'),
+  linkNostrPubkey: db.prepare('UPDATE users SET nostr_pubkey = ? WHERE id = ?'),
+  unlinkNostrPubkey: db.prepare('UPDATE users SET nostr_pubkey = NULL WHERE id = ?'),
 };
 
 // Passkey queries
@@ -428,6 +438,7 @@ const users = {
   },
   findById: (id) => userQueries.findById.get(id),
   findByName: (name) => userQueries.findByName.get(name),
+  findByNostrPubkey: (pubkey) => userQueries.findByNostrPubkey.get(pubkey),
   findAll: () => userQueries.findAll.all(),
   findAllActive: () => userQueries.findAllActive.all(),
   count: () => userQueries.countAll.get().count,
@@ -436,6 +447,8 @@ const users = {
   updateAvatar: (id, avatarUrl) => userQueries.updateAvatar.run(avatarUrl, id),
   setAdmin: (id, isAdmin) => userQueries.setAdmin.run(isAdmin ? 1 : 0, id),
   softDelete: (id) => userQueries.softDelete.run(id),
+  linkNostrPubkey: (id, pubkey) => userQueries.linkNostrPubkey.run(pubkey, id),
+  unlinkNostrPubkey: (id) => userQueries.unlinkNostrPubkey.run(id),
 };
 
 const passkeys = {

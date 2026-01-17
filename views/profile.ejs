@@ -66,6 +66,33 @@
       </form>
     </div>
 
+    <!-- Nostr Identity Section -->
+    <div class="border-t-2 border-pub-wood-light/30 pt-8 mt-8">
+      <h2 class="text-lg font-pub-heading font-semibold text-aged-cream mb-4 flex items-center gap-2">
+        <svg class="w-5 h-5 text-neon-pink" fill="currentColor" viewBox="0 0 24 24">
+          <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 17.93c-3.95-.49-7-3.85-7-7.93 0-.62.08-1.21.21-1.79L9 15v1c0 1.1.9 2 2 2v1.93zm6.9-2.54c-.26-.81-1-1.39-1.9-1.39h-1v-3c0-.55-.45-1-1-1H8v-2h2c.55 0 1-.45 1-1V7h2c1.1 0 2-.9 2-2v-.41c2.93 1.19 5 4.06 5 7.41 0 2.08-.8 3.97-2.1 5.39z"/>
+        </svg>
+        Nostr Identity
+      </h2>
+
+      <div id="nostr-status">
+        ${typeof nostrNpub !== 'undefined' && nostrNpub
+          ? '<div class="bg-pub-green-900/50 rounded-lg p-4 mb-4"><p class="text-sm text-pub-chalk-accent mb-1">Linked identity:</p><p class="text-neon-green font-mono text-xs break-all">' + nostrNpub + '</p></div>'
+          : '<p class="text-sm text-pub-chalk-accent mb-4">Link your Nostr identity to login with your extension.</p>'
+        }
+      </div>
+
+      <div id="nostr-actions">
+        ${typeof nostrNpub !== 'undefined' && nostrNpub
+          ? '<button id="nostr-unlink-btn" class="btn btn-danger">Unlink Nostr Identity</button>'
+          : '<button id="nostr-link-btn" class="btn btn-secondary hidden">Link Nostr Extension</button><p id="nostr-no-extension" class="text-sm text-pub-chalk-accent">No Nostr extension detected.</p>'
+        }
+      </div>
+
+      <p id="nostr-error" class="text-sm text-neon-orange mt-2 hidden"></p>
+      <p id="nostr-success" class="text-sm text-neon-green mt-2 hidden"></p>
+    </div>
+
     <!-- Push Notifications Section -->
     <div class="border-t-2 border-pub-wood-light/30 pt-8 mt-8">
       <h2 class="text-lg font-pub-heading font-semibold text-aged-cream mb-4 flex items-center gap-2">
@@ -86,9 +113,67 @@
   </div>
 </div>
 
+<script src="/js/nostr.js"></script>
 <script src="/js/push.js"></script>
 <script>
 document.addEventListener('DOMContentLoaded', async function() {
+  // Nostr link/unlink handling
+  const nostrLinkBtn = document.getElementById('nostr-link-btn');
+  const nostrUnlinkBtn = document.getElementById('nostr-unlink-btn');
+  const nostrErrorEl = document.getElementById('nostr-error');
+  const nostrSuccessEl = document.getElementById('nostr-success');
+  const nostrNoExtension = document.getElementById('nostr-no-extension');
+
+  // Show link button if extension available and not already linked
+  if (nostrLinkBtn && hasNostrExtension()) {
+    nostrLinkBtn.classList.remove('hidden');
+    if (nostrNoExtension) nostrNoExtension.classList.add('hidden');
+
+    nostrLinkBtn.addEventListener('click', async function() {
+      nostrLinkBtn.disabled = true;
+      nostrErrorEl.classList.add('hidden');
+      nostrSuccessEl.classList.add('hidden');
+
+      nostrLink(
+        (npub) => {
+          nostrSuccessEl.textContent = 'Nostr identity linked successfully!';
+          nostrSuccessEl.classList.remove('hidden');
+          setTimeout(() => location.reload(), 1000);
+        },
+        (error) => {
+          nostrErrorEl.textContent = error;
+          nostrErrorEl.classList.remove('hidden');
+          nostrLinkBtn.disabled = false;
+        }
+      );
+    });
+  }
+
+  // Unlink handler
+  if (nostrUnlinkBtn) {
+    nostrUnlinkBtn.addEventListener('click', async function() {
+      if (!confirm('Are you sure you want to unlink your Nostr identity?')) return;
+
+      nostrUnlinkBtn.disabled = true;
+      nostrErrorEl.classList.add('hidden');
+      nostrSuccessEl.classList.add('hidden');
+
+      nostrUnlink(
+        () => {
+          nostrSuccessEl.textContent = 'Nostr identity unlinked successfully!';
+          nostrSuccessEl.classList.remove('hidden');
+          setTimeout(() => location.reload(), 1000);
+        },
+        (error) => {
+          nostrErrorEl.textContent = error;
+          nostrErrorEl.classList.remove('hidden');
+          nostrUnlinkBtn.disabled = false;
+        }
+      );
+    });
+  }
+
+  // Push notification handling
   const statusEl = document.getElementById('push-status');
   const toggleBtn = document.getElementById('push-toggle');
   const errorEl = document.getElementById('push-error');

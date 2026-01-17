@@ -19,7 +19,54 @@
       Login with Passkey
     </button>
 
+    <div id="nostr-section" class="hidden">
+      <div class="flex items-center gap-4 my-6">
+        <div class="flex-1 border-t border-pub-wood-light/30"></div>
+        <span class="text-pub-chalk-accent text-sm">or</span>
+        <div class="flex-1 border-t border-pub-wood-light/30"></div>
+      </div>
+
+      <button type="button" id="nostr-login-btn" class="btn btn-secondary w-full inline-flex items-center justify-center gap-3">
+        <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
+          <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 17.93c-3.95-.49-7-3.85-7-7.93 0-.62.08-1.21.21-1.79L9 15v1c0 1.1.9 2 2 2v1.93zm6.9-2.54c-.26-.81-1-1.39-1.9-1.39h-1v-3c0-.55-.45-1-1-1H8v-2h2c.55 0 1-.45 1-1V7h2c1.1 0 2-.9 2-2v-.41c2.93 1.19 5 4.06 5 7.41 0 2.08-.8 3.97-2.1 5.39z"/>
+        </svg>
+        Login with Nostr Extension
+      </button>
+    </div>
+
     <div id="login-status" class="mt-4 text-center text-pub-chalk-accent text-sm"></div>
   </div>
 </div>
+
+<script src="/js/nostr.js"></script>
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+  // Show Nostr button if extension is available
+  if (hasNostrExtension()) {
+    document.getElementById('nostr-section').classList.remove('hidden');
+  }
+
+  const nostrBtn = document.getElementById('nostr-login-btn');
+  const statusEl = document.getElementById('login-status');
+
+  nostrBtn.addEventListener('click', async function() {
+    nostrBtn.disabled = true;
+    statusEl.textContent = 'Connecting to extension...';
+    statusEl.className = 'mt-4 text-center text-pub-chalk-accent text-sm';
+
+    nostrLogin(
+      (redirect) => {
+        statusEl.textContent = 'Success! Redirecting...';
+        statusEl.className = 'mt-4 text-center text-neon-green text-sm';
+        window.location.href = redirect;
+      },
+      (error) => {
+        statusEl.textContent = error;
+        statusEl.className = 'mt-4 text-center text-neon-orange text-sm';
+        nostrBtn.disabled = false;
+      }
+    );
+  });
+});
+</script>
 ` }) %>

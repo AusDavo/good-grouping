@@ -39,6 +39,7 @@ const {
   verifyAuthentication,
 } = require('../auth');
 const { redirectIfAuthenticated, requireAuth } = require('../middleware/auth');
+const { generateChallenge, verifyAuthEvent, hexToNpub } = require('../nostr');
 
 const router = express.Router();
 
@@ -97,6 +98,55 @@ router.post('/login/verify', async (req, res) => {
     res.status(400).json({ error: result.error || 'Authentication failed' });
   } catch (error) {
     console.error('Login verify error:', error);
+    res.status(500).json({ error: 'Authentication verification failed' });
+  }
+});
+
+// Generate Nostr login challenge
+router.get('/login/nostr-challenge', (req, res) => {
+  try {
+    const challenge = generateChallenge();
+    req.session.nostrChallenge = challenge;
+    res.json({ challenge });
+  } catch (error) {
+    console.error('Nostr challenge error:', error);
+    res.status(500).json({ error: 'Failed to generate challenge' });
+  }
+});
+
+// Verify Nostr login
+router.post('/login/nostr-verify', (req, res) => {
+  try {
+    const { signedEvent } = req.body;
+    const expectedChallenge = req.session.nostrChallenge;
+
+    if (!expectedChallenge) {
+      return res.status(400).json({ error: 'No authentication in progress' });
+    }
+
+    const result = verifyAuthEvent(signedEvent, expectedChallenge);
+    if (!result.verified) {
+      return res.status(400).json({ error: result.error || 'Verification failed' });
+    }
+
+    // Look up user by pubkey
+    const user = users.findByNostrPubkey(result.pubkey);
+    if (!user) {
+      return res.status(400).json({ error: 'No account linked to this Nostr identity' });
+    }
+
+    if (user.deleted_at) {
+      return res.status(400).json({ error: 'Account has been deleted' });
+    }
+
+    // Clear challenge
+    delete req.session.nostrChallenge;
+
+    // Log the user in
+    req.session.userId = user.id;
+    res.json({ success: true, redirect: '/' });
+  } catch (error) {
+    console.error('Nostr login verify error:', error);
     res.status(500).json({ error: 'Authentication verification failed' });
   }
 });
@@ -236,12 +286,115 @@ router.post('/register/verify', async (req, res) => {
   }
 });
 
+// Generate Nostr registration options
+router.post('/register/nostr-options', (req, res) => {
+  try {
+    const { token, username } = req.body;
+
+    if (!token || !username) {
+      return res.status(400).json({ error: 'Name is required' });
+    }
+
+    // Validate name
+    const trimmedName = username.trim();
+    if (trimmedName.length < 2 || trimmedName.length > 50) {
+      return res.status(400).json({ error: 'Name must be 2-50 characters' });
+    }
+
+    // Check if name already exists
+    if (users.findByName(trimmedName)) {
+      return res.status(400).json({ error: 'Name already taken' });
+    }
+
+    // Validate invitation
+    const invitation = invitations.findByToken(token);
+    const isSystemToken = invitation && invitation.created_by === 'SYSTEM';
+    const userCount = users.count();
+
+    if (!invitations.isValid(invitation) && !(isSystemToken && userCount === 0)) {
+      return res.status(400).json({ error: 'Invalid or expired invitation' });
+    }
+
+    const challenge = generateChallenge();
+
+    // Store registration data in session
+    req.session.nostrRegChallenge = challenge;
+    req.session.nostrRegToken = token;
+    req.session.nostrRegName = trimmedName;
+
+    res.json({ challenge });
+  } catch (error) {
+    console.error('Nostr registration options error:', error);
+    res.status(500).json({ error: 'Failed to generate registration options' });
+  }
+});
+
+// Verify Nostr registration
+router.post('/register/nostr-verify', (req, res) => {
+  try {
+    const { signedEvent } = req.body;
+    const expectedChallenge = req.session.nostrRegChallenge;
+    const token = req.session.nostrRegToken;
+    const name = req.session.nostrRegName;
+
+    if (!expectedChallenge || !token || !name) {
+      return res.status(400).json({ error: 'No registration in progress' });
+    }
+
+    // Validate invitation again
+    const invitation = invitations.findByToken(token);
+    const isSystemToken = invitation && invitation.created_by === 'SYSTEM';
+    const userCount = users.count();
+    const isFirstUser = isSystemToken && userCount === 0;
+
+    if (!invitations.isValid(invitation) && !isFirstUser) {
+      return res.status(400).json({ error: 'Invalid or expired invitation' });
+    }
+
+    // Verify the signed event
+    const result = verifyAuthEvent(signedEvent, expectedChallenge);
+    if (!result.verified) {
+      return res.status(400).json({ error: result.error || 'Verification failed' });
+    }
+
+    // Check if pubkey is already linked to another account
+    const existingUser = users.findByNostrPubkey(result.pubkey);
+    if (existingUser) {
+      return res.status(400).json({ error: 'This Nostr identity is already linked to another account' });
+    }
+
+    // Create the user (first user becomes admin)
+    const user = users.create(name, isFirstUser);
+
+    // Link the Nostr pubkey to the user
+    users.linkNostrPubkey(user.id, result.pubkey);
+
+    // Mark invitation as used
+    invitations.markUsed(invitation.id, user.id);
+
+    // Clear registration session data
+    delete req.session.nostrRegChallenge;
+    delete req.session.nostrRegToken;
+    delete req.session.nostrRegName;
+
+    // Log the user in
+    req.session.userId = user.id;
+
+    res.json({ success: true, redirect: '/' });
+  } catch (error) {
+    console.error('Nostr registration verify error:', error);
+    res.status(500).json({ error: 'Registration verification failed' });
+  }
+});
+
 // Profile page
 router.get('/profile', requireAuth, (req, res) => {
+  const nostrNpub = req.user.nostr_pubkey ? hexToNpub(req.user.nostr_pubkey) : null;
   res.render('profile', {
     title: 'Profile',
     error: null,
     success: null,
+    nostrNpub,
   });
 });
 
@@ -249,6 +402,7 @@ router.get('/profile', requireAuth, (req, res) => {
 router.post('/profile', requireAuth, (req, res) => {
   const { name } = req.body;
   const trimmedName = name ? name.trim() : '';
+  const nostrNpub = req.user.nostr_pubkey ? hexToNpub(req.user.nostr_pubkey) : null;
 
   // Validate name
   if (trimmedName.length < 2 || trimmedName.length > 50) {
@@ -256,6 +410,7 @@ router.post('/profile', requireAuth, (req, res) => {
       title: 'Profile',
       error: 'Name must be 2-50 characters',
       success: null,
+      nostrNpub,
     });
   }
 
@@ -266,6 +421,7 @@ router.post('/profile', requireAuth, (req, res) => {
       title: 'Profile',
       error: 'Name already taken',
       success: null,
+      nostrNpub,
     });
   }
 
@@ -280,12 +436,14 @@ router.post('/profile', requireAuth, (req, res) => {
     title: 'Profile',
     error: null,
     success: 'Name updated successfully',
+    nostrNpub,
   });
 });
 
 // Upload avatar
 router.post('/profile/avatar', requireAuth, (req, res) => {
   upload.single('avatar')(req, res, (err) => {
+    const nostrNpub = req.user.nostr_pubkey ? hexToNpub(req.user.nostr_pubkey) : null;
     if (err) {
       const errorMsg = err.message === 'File too large'
         ? 'Image must be under 2MB'
@@ -294,6 +452,7 @@ router.post('/profile/avatar', requireAuth, (req, res) => {
         title: 'Profile',
         error: errorMsg,
         success: null,
+        nostrNpub,
       });
     }
 
@@ -302,6 +461,7 @@ router.post('/profile/avatar', requireAuth, (req, res) => {
         title: 'Profile',
         error: 'Please select an image',
         success: null,
+        nostrNpub,
       });
     }
 
@@ -317,12 +477,14 @@ router.post('/profile/avatar', requireAuth, (req, res) => {
       title: 'Profile',
       error: null,
       success: 'Profile picture updated',
+      nostrNpub,
     });
   });
 });
 
 // Remove avatar
 router.post('/profile/avatar/remove', requireAuth, (req, res) => {
+  const nostrNpub = req.user.nostr_pubkey ? hexToNpub(req.user.nostr_pubkey) : null;
   // Delete the file if it exists
   if (req.user.avatar_url) {
     const filePath = path.join(__dirname, '../../data', req.user.avatar_url);
@@ -342,7 +504,84 @@ router.post('/profile/avatar/remove', requireAuth, (req, res) => {
     title: 'Profile',
     error: null,
     success: 'Profile picture removed',
+    nostrNpub,
   });
+});
+
+// Generate challenge for linking Nostr identity
+router.post('/profile/nostr/link', requireAuth, (req, res) => {
+  try {
+    // Check if user already has a linked Nostr identity
+    if (req.user.nostr_pubkey) {
+      return res.status(400).json({ error: 'Nostr identity already linked' });
+    }
+
+    const challenge = generateChallenge();
+    req.session.nostrLinkChallenge = challenge;
+    res.json({ challenge });
+  } catch (error) {
+    console.error('Nostr link challenge error:', error);
+    res.status(500).json({ error: 'Failed to generate challenge' });
+  }
+});
+
+// Verify and link Nostr identity to account
+router.post('/profile/nostr/verify', requireAuth, (req, res) => {
+  try {
+    const { signedEvent } = req.body;
+    const expectedChallenge = req.session.nostrLinkChallenge;
+
+    if (!expectedChallenge) {
+      return res.status(400).json({ error: 'No link in progress' });
+    }
+
+    // Verify the signed event
+    const result = verifyAuthEvent(signedEvent, expectedChallenge);
+    if (!result.verified) {
+      return res.status(400).json({ error: result.error || 'Verification failed' });
+    }
+
+    // Check if pubkey is already linked to another account
+    const existingUser = users.findByNostrPubkey(result.pubkey);
+    if (existingUser && existingUser.id !== req.user.id) {
+      return res.status(400).json({ error: 'This Nostr identity is already linked to another account' });
+    }
+
+    // Link the pubkey
+    users.linkNostrPubkey(req.user.id, result.pubkey);
+
+    // Update session
+    req.user.nostr_pubkey = result.pubkey;
+
+    // Clear challenge
+    delete req.session.nostrLinkChallenge;
+
+    const npub = hexToNpub(result.pubkey);
+    res.json({ success: true, npub });
+  } catch (error) {
+    console.error('Nostr link verify error:', error);
+    res.status(500).json({ error: 'Linking failed' });
+  }
+});
+
+// Unlink Nostr identity from account
+router.post('/profile/nostr/unlink', requireAuth, (req, res) => {
+  try {
+    if (!req.user.nostr_pubkey) {
+      return res.status(400).json({ error: 'No Nostr identity linked' });
+    }
+
+    // Unlink the pubkey
+    users.unlinkNostrPubkey(req.user.id);
+
+    // Update session
+    req.user.nostr_pubkey = null;
+
+    res.json({ success: true });
+  } catch (error) {
+    console.error('Nostr unlink error:', error);
+    res.status(500).json({ error: 'Unlinking failed' });
+  }
 });
 
 // Logout
