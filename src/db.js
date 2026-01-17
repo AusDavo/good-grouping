@@ -145,9 +145,15 @@ try {
 
 // Migration: Add nostr_pubkey column to users for Nostr login
 try {
-  db.exec('ALTER TABLE users ADD COLUMN nostr_pubkey TEXT UNIQUE');
+  db.exec('ALTER TABLE users ADD COLUMN nostr_pubkey TEXT');
 } catch (e) {
   // Column already exists, ignore
+}
+// Create unique index on nostr_pubkey (partial index for non-null values)
+try {
+  db.exec('CREATE UNIQUE INDEX idx_users_nostr_pubkey ON users(nostr_pubkey) WHERE nostr_pubkey IS NOT NULL');
+} catch (e) {
+  // Index already exists, ignore
 }
 
 // Create game_deletion_approvals table
