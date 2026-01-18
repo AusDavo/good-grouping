@@ -2,7 +2,7 @@ const express = require('express');
 const multer = require('multer');
 const path = require('path');
 const fs = require('fs');
-const { users, invitations } = require('../db');
+const { users, invitations, passkeys, countUserAuthMethods } = require('../db');
 
 // Configure multer for avatar uploads (store in data directory for persistence)
 const uploadDir = path.join(__dirname, '../../data/uploads/avatars');
@@ -571,6 +571,12 @@ router.post('/profile/nostr/unlink', requireAuth, (req, res) => {
       return res.status(400).json({ error: 'No Nostr identity linked' });
     }
 
+    // Check auth method count before unlinking
+    const authMethods = countUserAuthMethods(req.user.id);
+    if (authMethods.total <= 1) {
+      return res.status(400).json({ error: 'Cannot remove your only authentication method' });
+    }
+
     // Unlink the pubkey
     users.unlinkNostrPubkey(req.user.id);
 
@@ -581,6 +587,317 @@ router.post('/profile/nostr/unlink', requireAuth, (req, res) => {
   } catch (error) {
     console.error('Nostr unlink error:', error);
     res.status(500).json({ error: 'Unlinking failed' });
+  }
+});
+
+// List user's passkeys
+router.get('/profile/passkeys', requireAuth, (req, res) => {
+  try {
+    const userPasskeys = passkeys.findByUserId(req.user.id);
+    const authMethods = countUserAuthMethods(req.user.id);
+
+    // Add deletion eligibility to each passkey
+    const passkeysWithEligibility = userPasskeys.map(pk => ({
+      id: pk.id,
+      created_at: pk.created_at,
+      canDelete: authMethods.total > 1,
+    }));
+
+    res.json({
+      passkeys: passkeysWithEligibility,
+      authMethods,
+    });
+  } catch (error) {
+    console.error('List passkeys error:', error);
+    res.status(500).json({ error: 'Failed to list passkeys' });
+  }
+});
+
+// Generate WebAuthn options for adding a new passkey
+router.post('/profile/passkeys/add', requireAuth, async (req, res) => {
+  try {
+    const options = await generateRegistrationOptionsForUser(req.user);
+
+    // Store challenge in session
+    req.session.addPasskeyChallenge = options.challenge;
+
+    res.json(options);
+  } catch (error) {
+    console.error('Add passkey options error:', error);
+    res.status(500).json({ error: 'Failed to generate registration options' });
+  }
+});
+
+// Verify and store new passkey
+router.post('/profile/passkeys/verify', requireAuth, async (req, res) => {
+  try {
+    const { response } = req.body;
+    const expectedChallenge = req.session.addPasskeyChallenge;
+
+    if (!expectedChallenge) {
+      return res.status(400).json({ error: 'No passkey registration in progress' });
+    }
+
+    const result = await verifyAndStoreRegistration(req.user, response, expectedChallenge);
+
+    // Clear session
+    delete req.session.addPasskeyChallenge;
+
+    if (result.verified) {
+      res.json({ success: true });
+    } else {
+      res.status(400).json({ error: 'Passkey registration failed' });
+    }
+  } catch (error) {
+    console.error('Verify passkey error:', error);
+    res.status(500).json({ error: 'Failed to verify passkey' });
+  }
+});
+
+// Delete a passkey
+router.post('/profile/passkeys/:id/delete', requireAuth, (req, res) => {
+  try {
+    const passkeyId = req.params.id;
+
+    // Verify passkey exists and belongs to user
+    const passkey = passkeys.findById(passkeyId);
+    if (!passkey) {
+      return res.status(404).json({ error: 'Passkey not found' });
+    }
+    if (passkey.user_id !== req.user.id) {
+      return res.status(403).json({ error: 'Not authorized to delete this passkey' });
+    }
+
+    // Check auth method count before deletion
+    const authMethods = countUserAuthMethods(req.user.id);
+    if (authMethods.total <= 1) {
+      return res.status(400).json({ error: 'Cannot delete your only authentication method' });
+    }
+
+    // Delete the passkey
+    passkeys.deleteById(passkeyId);
+
+    res.json({ success: true });
+  } catch (error) {
+    console.error('Delete passkey error:', error);
+    res.status(500).json({ error: 'Failed to delete passkey' });
+  }
+});
+
+// Recovery page (requires valid recovery token)
+router.get('/recover', redirectIfAuthenticated, (req, res) => {
+  const { token } = req.query;
+
+  if (!token) {
+    return res.render('error', {
+      title: 'Invalid Link',
+      message: 'Recovery requires a valid recovery link.',
+    });
+  }
+
+  const invitation = invitations.findByToken(token);
+
+  if (!invitations.isValid(invitation) || !invitation.recovery_for_user_id) {
+    return res.render('error', {
+      title: 'Invalid Recovery Link',
+      message: 'This recovery link is invalid, expired, or has already been used.',
+    });
+  }
+
+  // Get the target user
+  const targetUser = users.findById(invitation.recovery_for_user_id);
+  if (!targetUser || targetUser.deleted_at) {
+    return res.render('error', {
+      title: 'Invalid Recovery Link',
+      message: 'The account associated with this recovery link no longer exists.',
+    });
+  }
+
+  // Check if user already has Nostr linked (can only add passkey then)
+  const hasNostr = !!targetUser.nostr_pubkey;
+
+  res.render('recover', {
+    title: 'Account Recovery',
+    token,
+    targetUserName: targetUser.name,
+    hasNostr,
+    error: null,
+  });
+});
+
+// Generate passkey registration options for recovery
+router.post('/recover/passkey-options', async (req, res) => {
+  try {
+    const { token } = req.body;
+
+    if (!token) {
+      return res.status(400).json({ error: 'Token is required' });
+    }
+
+    const invitation = invitations.findByToken(token);
+
+    if (!invitations.isValid(invitation) || !invitation.recovery_for_user_id) {
+      return res.status(400).json({ error: 'Invalid or expired recovery link' });
+    }
+
+    const targetUser = users.findById(invitation.recovery_for_user_id);
+    if (!targetUser || targetUser.deleted_at) {
+      return res.status(400).json({ error: 'Account no longer exists' });
+    }
+
+    const options = await generateRegistrationOptionsForUser(targetUser);
+
+    // Store in session
+    req.session.recoveryChallenge = options.challenge;
+    req.session.recoveryToken = token;
+
+    res.json(options);
+  } catch (error) {
+    console.error('Recovery passkey options error:', error);
+    res.status(500).json({ error: 'Failed to generate registration options' });
+  }
+});
+
+// Verify passkey registration for recovery and log in
+router.post('/recover/passkey-verify', async (req, res) => {
+  try {
+    const { response } = req.body;
+    const expectedChallenge = req.session.recoveryChallenge;
+    const token = req.session.recoveryToken;
+
+    if (!expectedChallenge || !token) {
+      return res.status(400).json({ error: 'No recovery in progress' });
+    }
+
+    // Re-validate invitation
+    const invitation = invitations.findByToken(token);
+    if (!invitations.isValid(invitation) || !invitation.recovery_for_user_id) {
+      return res.status(400).json({ error: 'Invalid or expired recovery link' });
+    }
+
+    const targetUser = users.findById(invitation.recovery_for_user_id);
+    if (!targetUser || targetUser.deleted_at) {
+      return res.status(400).json({ error: 'Account no longer exists' });
+    }
+
+    // Verify and store the passkey
+    const result = await verifyAndStoreRegistration(targetUser, response, expectedChallenge);
+
+    if (!result.verified) {
+      return res.status(400).json({ error: 'Passkey registration failed' });
+    }
+
+    // Mark invitation as used
+    invitations.markUsed(invitation.id, targetUser.id);
+
+    // Clear session
+    delete req.session.recoveryChallenge;
+    delete req.session.recoveryToken;
+
+    // Log the user in
+    req.session.userId = targetUser.id;
+
+    res.json({ success: true, redirect: '/' });
+  } catch (error) {
+    console.error('Recovery passkey verify error:', error);
+    res.status(500).json({ error: 'Recovery verification failed' });
+  }
+});
+
+// Generate Nostr challenge for recovery
+router.post('/recover/nostr-options', (req, res) => {
+  try {
+    const { token } = req.body;
+
+    if (!token) {
+      return res.status(400).json({ error: 'Token is required' });
+    }
+
+    const invitation = invitations.findByToken(token);
+
+    if (!invitations.isValid(invitation) || !invitation.recovery_for_user_id) {
+      return res.status(400).json({ error: 'Invalid or expired recovery link' });
+    }
+
+    const targetUser = users.findById(invitation.recovery_for_user_id);
+    if (!targetUser || targetUser.deleted_at) {
+      return res.status(400).json({ error: 'Account no longer exists' });
+    }
+
+    // Don't allow Nostr recovery if already linked
+    if (targetUser.nostr_pubkey) {
+      return res.status(400).json({ error: 'This account already has a Nostr identity linked. Please use passkey recovery.' });
+    }
+
+    const challenge = generateChallenge();
+
+    // Store in session
+    req.session.nostrRecoveryChallenge = challenge;
+    req.session.nostrRecoveryToken = token;
+
+    res.json({ challenge });
+  } catch (error) {
+    console.error('Recovery Nostr options error:', error);
+    res.status(500).json({ error: 'Failed to generate challenge' });
+  }
+});
+
+// Verify Nostr for recovery and log in
+router.post('/recover/nostr-verify', (req, res) => {
+  try {
+    const { signedEvent } = req.body;
+    const expectedChallenge = req.session.nostrRecoveryChallenge;
+    const token = req.session.nostrRecoveryToken;
+
+    if (!expectedChallenge || !token) {
+      return res.status(400).json({ error: 'No recovery in progress' });
+    }
+
+    // Re-validate invitation
+    const invitation = invitations.findByToken(token);
+    if (!invitations.isValid(invitation) || !invitation.recovery_for_user_id) {
+      return res.status(400).json({ error: 'Invalid or expired recovery link' });
+    }
+
+    const targetUser = users.findById(invitation.recovery_for_user_id);
+    if (!targetUser || targetUser.deleted_at) {
+      return res.status(400).json({ error: 'Account no longer exists' });
+    }
+
+    // Don't allow if Nostr already linked
+    if (targetUser.nostr_pubkey) {
+      return res.status(400).json({ error: 'This account already has a Nostr identity linked' });
+    }
+
+    // Verify the signed event
+    const result = verifyAuthEvent(signedEvent, expectedChallenge);
+    if (!result.verified) {
+      return res.status(400).json({ error: result.error || 'Verification failed' });
+    }
+
+    // Check if pubkey is already linked to another account
+    const existingUser = users.findByNostrPubkey(result.pubkey);
+    if (existingUser && existingUser.id !== targetUser.id) {
+      return res.status(400).json({ error: 'This Nostr identity is already linked to another account' });
+    }
+
+    // Link the Nostr pubkey
+    users.linkNostrPubkey(targetUser.id, result.pubkey);
+
+    // Mark invitation as used
+    invitations.markUsed(invitation.id, targetUser.id);
+
+    // Clear session
+    delete req.session.nostrRecoveryChallenge;
+    delete req.session.nostrRecoveryToken;
+
+    // Log the user in
+    req.session.userId = targetUser.id;
+
+    res.json({ success: true, redirect: '/' });
+  } catch (error) {
+    console.error('Recovery Nostr verify error:', error);
+    res.status(500).json({ error: 'Recovery verification failed' });
   }
 });
 

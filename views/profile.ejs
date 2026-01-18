@@ -66,6 +66,32 @@
       </form>
     </div>
 
+    <!-- Passkeys Section -->
+    <div class="border-t-2 border-pub-wood-light/30 pt-8 mt-8">
+      <h2 class="text-lg font-pub-heading font-semibold text-aged-cream mb-4 flex items-center gap-2">
+        <svg class="w-5 h-5 text-neon-blue" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 11c0 3.517-1.009 6.799-2.753 9.571m-3.44-2.04l.054-.09A13.916 13.916 0 008 11a4 4 0 118 0c0 1.017-.07 2.019-.203 3m-2.118 6.844A21.88 21.88 0 0015.171 17m3.839 1.132c.645-2.266.99-4.659.99-7.132A8 8 0 008 4.07M3 15.364c.64-1.319 1-2.8 1-4.364 0-1.457.39-2.823 1.07-4" />
+        </svg>
+        Passkeys
+      </h2>
+
+      <p class="text-sm text-pub-chalk-accent mb-4">Passkeys let you sign in securely using your device's built-in security.</p>
+
+      <div id="passkeys-list" class="space-y-3 mb-4">
+        <p class="text-sm text-pub-chalk-accent italic">Loading passkeys...</p>
+      </div>
+
+      <button id="add-passkey-btn" class="btn btn-secondary inline-flex items-center gap-2">
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+        </svg>
+        Add Passkey
+      </button>
+
+      <p id="passkey-error" class="text-sm text-neon-orange mt-2 hidden"></p>
+      <p id="passkey-success" class="text-sm text-neon-green mt-2 hidden"></p>
+    </div>
+
     <!-- Nostr Identity Section -->
     <div class="border-t-2 border-pub-wood-light/30 pt-8 mt-8">
       <h2 class="text-lg font-pub-heading font-semibold text-aged-cream mb-4 flex items-center gap-2">
@@ -115,8 +141,13 @@
 
 <script src="/js/nostr.js"></script>
 <script src="/js/push.js"></script>
+<script src="/js/webauthn.js"></script>
+<script src="/js/profile-passkeys.js"></script>
 <script>
 document.addEventListener('DOMContentLoaded', async function() {
+  // Initialize passkey management
+  initPasskeyManagement();
+
   // Nostr link/unlink handling
   const nostrLinkBtn = document.getElementById('nostr-link-btn');
   const nostrUnlinkBtn = document.getElementById('nostr-unlink-btn');

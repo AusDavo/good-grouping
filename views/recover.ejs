@@ -1,0 +1,248 @@
+<%- include('layout', { body: `
+<div class="max-w-md mx-auto mt-12">
+  <div class="card-wood p-8">
+    <div class="text-center mb-8">
+      <!-- Recovery Icon with Neon Glow -->
+      <div class="w-20 h-20 rounded-full bg-pub-green-900 border-4 border-neon-orange flex items-center justify-center mx-auto mb-4 shadow-neon-orange">
+        <span class="text-4xl">🔑</span>
+      </div>
+      <h1 class="text-2xl font-pub-heading font-bold text-aged-cream">
+        Account Recovery
+      </h1>
+      <p class="text-pub-chalk-accent mt-2">Recovering account: <span class="text-neon-orange font-semibold">${targetUserName}</span></p>
+    </div>
+
+    <div class="bg-neon-blue/10 border-2 border-neon-blue/30 text-neon-blue px-4 py-3 rounded-lg mb-6 text-sm">
+      <div class="flex items-center gap-2">
+        <span class="text-xl">🔐</span>
+        <span>Add a new authentication method to regain access to your account.</span>
+      </div>
+    </div>
+
+    ${typeof error !== 'undefined' && error ? '<div class="alert alert-error mb-6">' + error + '</div>' : ''}
+
+    <!-- Method Toggle -->
+    <div id="method-toggle" class="flex rounded-lg bg-pub-green-900/50 p-1 mb-6">
+      <button type="button" id="passkey-tab" class="flex-1 py-2 px-4 rounded-md text-sm font-medium transition-colors bg-pub-wood text-aged-cream">
+        Passkey
+      </button>
+      <button type="button" id="nostr-tab" class="flex-1 py-2 px-4 rounded-md text-sm font-medium transition-colors text-pub-chalk-accent ${hasNostr ? 'hidden' : 'hidden'}">
+        Nostr
+      </button>
+    </div>
+
+    <!-- Passkey Recovery Form -->
+    <form id="passkey-recover-form" class="space-y-6">
+      <input type="hidden" id="token" value="${token}">
+
+      <p class="text-sm text-pub-chalk-accent">Click the button below to create a new passkey for your account.</p>
+
+      <button type="submit" class="btn btn-primary w-full inline-flex items-center justify-center gap-3">
+        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 11c0 3.517-1.009 6.799-2.753 9.571m-3.44-2.04l.054-.09A13.916 13.916 0 008 11a4 4 0 118 0c0 1.017-.07 2.019-.203 3m-2.118 6.844A21.88 21.88 0 0015.171 17m3.839 1.132c.645-2.266.99-4.659.99-7.132A8 8 0 008 4.07M3 15.364c.64-1.319 1-2.8 1-4.364 0-1.457.39-2.823 1.07-4" />
+        </svg>
+        Recover with Passkey
+      </button>
+    </form>
+
+    <!-- Nostr Recovery Form -->
+    <form id="nostr-recover-form" class="space-y-6 hidden">
+      <input type="hidden" id="nostr-token" value="${token}">
+
+      <p class="text-sm text-pub-chalk-accent">Click the button below to link your Nostr identity to your account.</p>
+
+      <button type="submit" class="btn btn-secondary w-full inline-flex items-center justify-center gap-3">
+        <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
+          <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 17.93c-3.95-.49-7-3.85-7-7.93 0-.62.08-1.21.21-1.79L9 15v1c0 1.1.9 2 2 2v1.93zm6.9-2.54c-.26-.81-1-1.39-1.9-1.39h-1v-3c0-.55-.45-1-1-1H8v-2h2c.55 0 1-.45 1-1V7h2c1.1 0 2-.9 2-2v-.41c2.93 1.19 5 4.06 5 7.41 0 2.08-.8 3.97-2.1 5.39z"/>
+        </svg>
+        Recover with Nostr Extension
+      </button>
+    </form>
+
+    <div id="recover-status" class="mt-4 text-center text-pub-chalk-accent text-sm"></div>
+  </div>
+</div>
+
+<script src="/js/webauthn.js"></script>
+<script src="/js/nostr.js"></script>
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+  const passkeyTab = document.getElementById('passkey-tab');
+  const nostrTab = document.getElementById('nostr-tab');
+  const passkeyForm = document.getElementById('passkey-recover-form');
+  const nostrForm = document.getElementById('nostr-recover-form');
+  const statusEl = document.getElementById('recover-status');
+  const hasNostr = ${hasNostr ? 'true' : 'false'};
+
+  // Show Nostr tab if extension is available AND user doesn't already have Nostr linked
+  if (hasNostrExtension() && !hasNostr) {
+    nostrTab.classList.remove('hidden');
+  }
+
+  // Tab switching
+  passkeyTab.addEventListener('click', function() {
+    passkeyTab.className = 'flex-1 py-2 px-4 rounded-md text-sm font-medium transition-colors bg-pub-wood text-aged-cream';
+    nostrTab.className = 'flex-1 py-2 px-4 rounded-md text-sm font-medium transition-colors text-pub-chalk-accent';
+    passkeyForm.classList.remove('hidden');
+    nostrForm.classList.add('hidden');
+    statusEl.textContent = '';
+  });
+
+  nostrTab.addEventListener('click', function() {
+    nostrTab.className = 'flex-1 py-2 px-4 rounded-md text-sm font-medium transition-colors bg-pub-wood text-aged-cream';
+    passkeyTab.className = 'flex-1 py-2 px-4 rounded-md text-sm font-medium transition-colors text-pub-chalk-accent';
+    nostrForm.classList.remove('hidden');
+    passkeyForm.classList.add('hidden');
+    statusEl.textContent = '';
+  });
+
+  // Passkey recovery
+  passkeyForm.addEventListener('submit', async function(e) {
+    e.preventDefault();
+    const token = document.getElementById('token').value;
+    const submitBtn = passkeyForm.querySelector('button[type="submit"]');
+
+    submitBtn.disabled = true;
+    statusEl.textContent = 'Starting recovery...';
+    statusEl.className = 'mt-4 text-center text-pub-chalk-accent text-sm';
+
+    try {
+      // Get registration options
+      const optionsRes = await fetch('/recover/passkey-options', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ token }),
+      });
+
+      const options = await optionsRes.json();
+
+      if (options.error) {
+        throw new Error(options.error);
+      }
+
+      // Convert challenge and user.id from base64url
+      options.challenge = base64urlToBuffer(options.challenge);
+      options.user.id = base64urlToBuffer(options.user.id);
+
+      // Convert excludeCredentials if present
+      if (options.excludeCredentials) {
+        options.excludeCredentials = options.excludeCredentials.map(cred => ({
+          ...cred,
+          id: base64urlToBuffer(cred.id),
+        }));
+      }
+
+      statusEl.textContent = 'Please create your passkey...';
+
+      // Call WebAuthn API
+      const credential = await navigator.credentials.create({
+        publicKey: options,
+      });
+
+      // Prepare response for server
+      const response = {
+        id: credential.id,
+        rawId: bufferToBase64url(credential.rawId),
+        response: {
+          attestationObject: bufferToBase64url(credential.response.attestationObject),
+          clientDataJSON: bufferToBase64url(credential.response.clientDataJSON),
+          transports: credential.response.getTransports ? credential.response.getTransports() : [],
+          publicKeyAlgorithm: credential.response.getPublicKeyAlgorithm
+            ? credential.response.getPublicKeyAlgorithm()
+            : null,
+          publicKey: credential.response.getPublicKey
+            ? bufferToBase64url(credential.response.getPublicKey())
+            : null,
+          authenticatorData: credential.response.getAuthenticatorData
+            ? bufferToBase64url(credential.response.getAuthenticatorData())
+            : null,
+        },
+        type: credential.type,
+        clientExtensionResults: credential.getClientExtensionResults(),
+        authenticatorAttachment: credential.authenticatorAttachment,
+      };
+
+      statusEl.textContent = 'Verifying...';
+
+      // Verify with server
+      const verifyRes = await fetch('/recover/passkey-verify', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ response }),
+      });
+
+      const result = await verifyRes.json();
+
+      if (result.success) {
+        statusEl.textContent = 'Recovery successful! Redirecting...';
+        statusEl.className = 'mt-4 text-center text-neon-green text-sm';
+        window.location.href = result.redirect || '/';
+      } else {
+        throw new Error(result.error || 'Recovery failed');
+      }
+    } catch (error) {
+      console.error('Recovery error:', error);
+      if (error.name === 'NotAllowedError') {
+        statusEl.textContent = 'Passkey creation was cancelled or not allowed';
+      } else {
+        statusEl.textContent = error.message || 'Recovery failed';
+      }
+      statusEl.className = 'mt-4 text-center text-neon-orange text-sm';
+      submitBtn.disabled = false;
+    }
+  });
+
+  // Nostr recovery
+  nostrForm.addEventListener('submit', async function(e) {
+    e.preventDefault();
+    const token = document.getElementById('nostr-token').value;
+    const submitBtn = nostrForm.querySelector('button[type="submit"]');
+
+    submitBtn.disabled = true;
+    statusEl.textContent = 'Connecting to extension...';
+    statusEl.className = 'mt-4 text-center text-pub-chalk-accent text-sm';
+
+    try {
+      // Get challenge from server
+      const optionsRes = await fetch('/recover/nostr-options', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ token }),
+      });
+
+      if (!optionsRes.ok) {
+        const data = await optionsRes.json();
+        throw new Error(data.error || 'Failed to get challenge');
+      }
+      const { challenge } = await optionsRes.json();
+
+      // Sign the challenge
+      const signedEvent = await signAuthEvent(challenge, 'Recover account at Good Grouping');
+
+      statusEl.textContent = 'Verifying...';
+
+      // Verify with server
+      const verifyRes = await fetch('/recover/nostr-verify', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ signedEvent }),
+      });
+
+      const result = await verifyRes.json();
+      if (!verifyRes.ok) {
+        throw new Error(result.error || 'Recovery failed');
+      }
+
+      statusEl.textContent = 'Recovery successful! Redirecting...';
+      statusEl.className = 'mt-4 text-center text-neon-green text-sm';
+      window.location.href = result.redirect || '/';
+    } catch (error) {
+      console.error('Nostr recovery error:', error);
+      statusEl.textContent = error.message || 'Recovery failed';
+      statusEl.className = 'mt-4 text-center text-neon-orange text-sm';
+      submitBtn.disabled = false;
+    }
+  });
+});
+</script>
+` }) %>

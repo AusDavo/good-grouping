@@ -10,14 +10,18 @@ router.use(requireAdmin);
 // Invitations management page
 router.get('/invites', (req, res) => {
   const activeInvites = invitations.findActive();
+  const activeRecoveryInvites = invitations.findActiveRecovery();
   const expiredInvites = invitations.findExpired();
   const usedInvites = invitations.findUsed();
+  const allUsers = users.findAllActive();
 
   res.render('admin/invites', {
     title: 'Manage Invitations',
     activeInvites,
+    activeRecoveryInvites,
     expiredInvites,
     usedInvites,
+    allUsers,
     baseUrl: process.env.BASE_URL || `${req.protocol}://${req.get('host')}`,
   });
 });
@@ -32,6 +36,55 @@ router.post('/invites', (req, res) => {
     res.status(500).render('error', {
       title: 'Error',
       message: 'Failed to create invitation',
+    });
+  }
+});
+
+// Create recovery invitation for a specific user
+router.post('/invites/recovery', (req, res) => {
+  try {
+    const { userId } = req.body;
+
+    if (!userId) {
+      return res.status(400).render('error', {
+        title: 'Error',
+        message: 'User ID is required',
+      });
+    }
+
+    // Validate user exists and is not deleted
+    const targetUser = users.findById(userId);
+    if (!targetUser) {
+      return res.status(404).render('error', {
+        title: 'Not Found',
+        message: 'User not found',
+      });
+    }
+
+    if (targetUser.deleted_at) {
+      return res.status(400).render('error', {
+        title: 'Error',
+        message: 'Cannot create recovery invitation for a deleted user',
+      });
+    }
+
+    // Check if there's already an active recovery invitation for this user
+    const existingRecovery = invitations.findRecoveryByUserId(userId);
+    if (existingRecovery) {
+      return res.status(400).render('error', {
+        title: 'Error',
+        message: 'An active recovery invitation already exists for this user',
+      });
+    }
+
+    // Create recovery invitation (expires in 7 days)
+    invitations.createRecovery(req.user.id, userId, 7);
+    res.redirect('/admin/invites');
+  } catch (error) {
+    console.error('Create recovery invite error:', error);
+    res.status(500).render('error', {
+      title: 'Error',
+      message: 'Failed to create recovery invitation',
     });
   }
 });

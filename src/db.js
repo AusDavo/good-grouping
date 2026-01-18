@@ -156,6 +156,13 @@ try {
   // Index already exists, ignore
 }
 
+// Migration: Add recovery_for_user_id column to invitations for recovery invitations
+try {
+  db.exec('ALTER TABLE invitations ADD COLUMN recovery_for_user_id TEXT');
+} catch (e) {
+  // Column already exists, ignore
+}
+
 // Create game_deletion_approvals table
 db.exec(`
   CREATE TABLE IF NOT EXISTS game_deletion_approvals (
@@ -201,7 +208,10 @@ const passkeyQueries = {
 
   findByCredentialId: db.prepare('SELECT * FROM passkeys WHERE credential_id = ?'),
   findByUserId: db.prepare('SELECT * FROM passkeys WHERE user_id = ?'),
+  findById: db.prepare('SELECT * FROM passkeys WHERE id = ?'),
   findAll: db.prepare('SELECT * FROM passkeys'),
+  countByUserId: db.prepare('SELECT COUNT(*) as count FROM passkeys WHERE user_id = ?'),
+  deleteById: db.prepare('DELETE FROM passkeys WHERE id = ?'),
 
   updateCounter: db.prepare('UPDATE passkeys SET counter = ? WHERE id = ?'),
 };
@@ -213,12 +223,27 @@ const invitationQueries = {
     VALUES (?, ?, ?, ?)
   `),
 
+  createRecovery: db.prepare(`
+    INSERT INTO invitations (id, token, created_by, expires_at, recovery_for_user_id)
+    VALUES (?, ?, ?, ?, ?)
+  `),
+
   findByToken: db.prepare('SELECT * FROM invitations WHERE token = ?'),
   findActive: db.prepare(`
     SELECT i.*, COALESCE(u.name, i.created_by) as created_by_name
     FROM invitations i
     LEFT JOIN users u ON i.created_by = u.id
     WHERE i.used_by IS NULL AND i.revoked = 0 AND i.expires_at > datetime('now')
+      AND i.recovery_for_user_id IS NULL
+    ORDER BY i.expires_at
+  `),
+  findActiveRecovery: db.prepare(`
+    SELECT i.*, COALESCE(u.name, i.created_by) as created_by_name, target.name as recovery_for_name
+    FROM invitations i
+    LEFT JOIN users u ON i.created_by = u.id
+    LEFT JOIN users target ON i.recovery_for_user_id = target.id
+    WHERE i.used_by IS NULL AND i.revoked = 0 AND i.expires_at > datetime('now')
+      AND i.recovery_for_user_id IS NOT NULL
     ORDER BY i.expires_at
   `),
   findExpired: db.prepare(`
@@ -237,6 +262,10 @@ const invitationQueries = {
     WHERE i.used_by IS NOT NULL
     ORDER BY i.used_at DESC
     LIMIT 20
+  `),
+  findRecoveryByUserId: db.prepare(`
+    SELECT * FROM invitations
+    WHERE recovery_for_user_id = ? AND used_by IS NULL AND revoked = 0 AND expires_at > datetime('now')
   `),
 
   markUsed: db.prepare('UPDATE invitations SET used_by = ?, used_at = datetime(\'now\') WHERE id = ?'),
@@ -470,6 +499,13 @@ const passkeys = {
     }
     return passkey;
   },
+  findById: (id) => {
+    const passkey = passkeyQueries.findById.get(id);
+    if (passkey && passkey.transports) {
+      passkey.transports = JSON.parse(passkey.transports);
+    }
+    return passkey;
+  },
   findByUserId: (userId) => {
     const keys = passkeyQueries.findByUserId.all(userId);
     return keys.map(k => {
@@ -478,6 +514,8 @@ const passkeys = {
     });
   },
   findAll: () => passkeyQueries.findAll.all(),
+  countByUserId: (userId) => passkeyQueries.countByUserId.get(userId).count,
+  deleteById: (id) => passkeyQueries.deleteById.run(id),
   updateCounter: (id, counter) => passkeyQueries.updateCounter.run(counter, id),
 };
 
@@ -489,10 +527,19 @@ const invitations = {
     invitationQueries.create.run(id, token, createdBy, expiresAt);
     return { id, token, expires_at: expiresAt };
   },
+  createRecovery(createdBy, recoveryForUserId, expiresInDays = 7) {
+    const id = uuidv4();
+    const token = uuidv4();
+    const expiresAt = new Date(Date.now() + expiresInDays * 24 * 60 * 60 * 1000).toISOString();
+    invitationQueries.createRecovery.run(id, token, createdBy, expiresAt, recoveryForUserId);
+    return { id, token, expires_at: expiresAt, recovery_for_user_id: recoveryForUserId };
+  },
   findByToken: (token) => invitationQueries.findByToken.get(token),
   findActive: () => invitationQueries.findActive.all(),
+  findActiveRecovery: () => invitationQueries.findActiveRecovery.all(),
   findExpired: () => invitationQueries.findExpired.all(),
   findUsed: () => invitationQueries.findUsed.all(),
+  findRecoveryByUserId: (userId) => invitationQueries.findRecoveryByUserId.get(userId),
   markUsed: (id, userId) => invitationQueries.markUsed.run(userId, id),
   revoke: (id) => invitationQueries.revoke.run(id),
   isValid(invitation) {
@@ -692,6 +739,18 @@ function getOrCreateSetupToken() {
   return token;
 }
 
+// Helper to count user's auth methods (passkeys + nostr)
+function countUserAuthMethods(userId) {
+  const passkeyCount = passkeys.countByUserId(userId);
+  const user = users.findById(userId);
+  const hasNostr = user && !!user.nostr_pubkey;
+  return {
+    passkeys: passkeyCount,
+    nostr: hasNostr,
+    total: passkeyCount + (hasNostr ? 1 : 0),
+  };
+}
+
 module.exports = {
   db,
   users,
@@ -703,4 +762,5 @@ module.exports = {
   crowns,
   gameDeletions,
   getOrCreateSetupToken,
+  countUserAuthMethods,
 };
