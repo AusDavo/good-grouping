@@ -122,6 +122,55 @@ ${(() => {
 
   ${game.notes ? '<div class="p-6 border-t-2 border-pub-wood-medium/50 bg-pub-brown-800/30"><h2 class="text-lg font-pub-heading font-semibold text-pub-chalk-text mb-3 flex items-center gap-2"><span>💬</span> Match Notes</h2><div class="speech-bubble"><p class="text-pub-chalk-text italic">"' + game.notes + '"</p></div></div>' : ''}
 
+  <!-- Comments Section -->
+  <div class="p-6 border-t-2 border-pub-wood-medium/50 bg-pub-brown-800/30">
+    <h2 class="text-lg font-pub-heading font-semibold text-pub-chalk-text mb-4 flex items-center gap-2">
+      <span>🗨️</span> Comments
+    </h2>
+
+    ${(() => {
+      const commentsList = typeof comments !== 'undefined' ? comments : [];
+
+      if (commentsList.length === 0) {
+        return '<p class="text-pub-chalk-accent text-sm italic">No comments yet. Be the first to share your thoughts!</p>';
+      }
+
+      return '<div class="space-y-4">' + commentsList.map(c => {
+        const avatar = c.avatar_url
+          ? '<img src="' + c.avatar_url + '" alt="" class="w-8 h-8 rounded-full object-cover ring-2 ring-pub-wood-medium flex-shrink-0">'
+          : '<div class="w-8 h-8 rounded-full bg-pub-green-700 flex items-center justify-center ring-2 ring-pub-wood-medium flex-shrink-0"><span class="text-xs font-bold text-neon-green">' + c.name.charAt(0).toUpperCase() + '</span></div>';
+
+        const timeAgo = (() => {
+          const now = new Date();
+          const commentTime = new Date(c.created_at + 'Z');
+          const diffMs = now - commentTime;
+          const diffMins = Math.floor(diffMs / 60000);
+          const diffHours = Math.floor(diffMs / 3600000);
+          const diffDays = Math.floor(diffMs / 86400000);
+
+          if (diffMins < 1) return 'just now';
+          if (diffMins < 60) return diffMins + 'm ago';
+          if (diffHours < 24) return diffHours + 'h ago';
+          if (diffDays < 7) return diffDays + 'd ago';
+          return commentTime.toLocaleDateString();
+        })();
+
+        const canDelete = typeof user !== 'undefined' && user && (c.user_id === user.id || user.is_admin);
+        const deleteBtn = canDelete
+          ? '<form action="/games/' + game.id + '/comments/' + c.id + '/delete" method="POST" class="inline" onsubmit="return confirm(&apos;Delete this comment?&apos;)"><button type="submit" class="text-pub-chalk-accent hover:text-neon-pink text-xs transition-colors">Delete</button></form>'
+          : '';
+
+        return '<div class="speech-bubble"><div class="flex items-start gap-3"><a href="/users/' + c.user_id + '" class="hover:opacity-80 transition-opacity">' + avatar + '</a><div class="flex-1 min-w-0"><div class="flex items-center gap-2 mb-1"><a href="/users/' + c.user_id + '" class="text-pub-chalk-text font-medium text-sm hover:underline">' + c.name + '</a><span class="text-pub-chalk-accent text-xs">' + timeAgo + '</span>' + deleteBtn + '</div><p class="text-pub-chalk-text text-sm break-words">' + c.content.replace(/</g, '&lt;').replace(/>/g, '&gt;') + '</p></div></div></div>';
+      }).join('') + '</div>';
+    })()}
+
+    ${(() => {
+      if (typeof user === 'undefined' || !user) return '';
+
+      return '<form action="/games/' + game.id + '/comments" method="POST" class="mt-4"><div class="flex gap-3"><textarea name="content" placeholder="Add a comment..." maxlength="500" required class="flex-1 bg-pub-brown-900/50 border-2 border-pub-wood-medium rounded-lg p-3 text-pub-chalk-text placeholder-pub-chalk-accent/50 text-sm resize-none focus:outline-none focus:border-neon-blue transition-colors" rows="2"></textarea><button type="submit" class="btn btn-primary self-end">Post</button></div><p class="text-pub-chalk-accent text-xs mt-1">Max 500 characters</p></form>';
+    })()}
+  </div>
+
   ${(() => {
   if (typeof user === 'undefined' || !user) return '';
   const isParticipant = game.players.some(p => p.user_id === user.id);

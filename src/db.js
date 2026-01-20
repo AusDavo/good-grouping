@@ -177,6 +177,86 @@ db.exec(`
   CREATE INDEX IF NOT EXISTS idx_game_deletion_approvals_game ON game_deletion_approvals(game_id);
 `);
 
+// Create live games tables
+db.exec(`
+  -- Live game sessions
+  CREATE TABLE IF NOT EXISTS live_games (
+    id TEXT PRIMARY KEY,
+    game_type TEXT NOT NULL,
+    status TEXT DEFAULT 'waiting',
+    starting_score INTEGER,
+    current_player_index INTEGER DEFAULT 0,
+    current_dart INTEGER DEFAULT 1,
+    current_turn INTEGER DEFAULT 1,
+    created_by TEXT NOT NULL,
+    created_at TEXT DEFAULT (datetime('now')),
+    started_at TEXT,
+    finished_at TEXT,
+    winner_player_id TEXT,
+    FOREIGN KEY (created_by) REFERENCES users(id)
+  );
+
+  -- Ordered players in live game
+  CREATE TABLE IF NOT EXISTS live_game_players (
+    id TEXT PRIMARY KEY,
+    live_game_id TEXT NOT NULL,
+    user_id TEXT NOT NULL,
+    player_order INTEGER NOT NULL,
+    marks_15 INTEGER DEFAULT 0,
+    marks_16 INTEGER DEFAULT 0,
+    marks_17 INTEGER DEFAULT 0,
+    marks_18 INTEGER DEFAULT 0,
+    marks_19 INTEGER DEFAULT 0,
+    marks_20 INTEGER DEFAULT 0,
+    marks_bull INTEGER DEFAULT 0,
+    cricket_points INTEGER DEFAULT 0,
+    remaining_score INTEGER,
+    current_target INTEGER DEFAULT 1,
+    FOREIGN KEY (live_game_id) REFERENCES live_games(id) ON DELETE CASCADE,
+    FOREIGN KEY (user_id) REFERENCES users(id),
+    UNIQUE(live_game_id, user_id)
+  );
+
+  -- Individual throws (enables undo + history)
+  CREATE TABLE IF NOT EXISTS live_game_throws (
+    id TEXT PRIMARY KEY,
+    live_game_id TEXT NOT NULL,
+    player_id TEXT NOT NULL,
+    throw_order INTEGER NOT NULL,
+    turn_number INTEGER NOT NULL,
+    dart_in_turn INTEGER NOT NULL,
+    segment INTEGER,
+    multiplier INTEGER DEFAULT 1,
+    raw_value INTEGER DEFAULT 0,
+    is_bust INTEGER DEFAULT 0,
+    created_at TEXT DEFAULT (datetime('now')),
+    entered_by TEXT NOT NULL,
+    FOREIGN KEY (live_game_id) REFERENCES live_games(id) ON DELETE CASCADE,
+    FOREIGN KEY (player_id) REFERENCES live_game_players(id),
+    FOREIGN KEY (entered_by) REFERENCES users(id)
+  );
+
+  CREATE INDEX IF NOT EXISTS idx_live_games_status ON live_games(status);
+  CREATE INDEX IF NOT EXISTS idx_live_games_created_by ON live_games(created_by);
+  CREATE INDEX IF NOT EXISTS idx_live_game_players_game ON live_game_players(live_game_id);
+  CREATE INDEX IF NOT EXISTS idx_live_game_throws_game ON live_game_throws(live_game_id);
+  CREATE INDEX IF NOT EXISTS idx_live_game_throws_player ON live_game_throws(player_id);
+`);
+
+// Create game_comments table
+db.exec(`
+  CREATE TABLE IF NOT EXISTS game_comments (
+    id TEXT PRIMARY KEY,
+    game_id TEXT NOT NULL,
+    user_id TEXT NOT NULL,
+    content TEXT NOT NULL,
+    created_at TEXT DEFAULT (datetime('now')),
+    FOREIGN KEY (game_id) REFERENCES games(id) ON DELETE CASCADE,
+    FOREIGN KEY (user_id) REFERENCES users(id)
+  );
+  CREATE INDEX IF NOT EXISTS idx_game_comments_game_id ON game_comments(game_id);
+`);
+
 // User queries
 const userQueries = {
   create: db.prepare(`
@@ -464,6 +544,136 @@ const gameDeletionQueries = {
   `),
 };
 
+// Live game queries
+const liveGameQueries = {
+  create: db.prepare(`
+    INSERT INTO live_games (id, game_type, status, starting_score, created_by)
+    VALUES (?, ?, 'waiting', ?, ?)
+  `),
+
+  findById: db.prepare(`
+    SELECT lg.*, u.name as created_by_name
+    FROM live_games lg
+    JOIN users u ON lg.created_by = u.id
+    WHERE lg.id = ?
+  `),
+
+  findActive: db.prepare(`
+    SELECT lg.*, u.name as created_by_name
+    FROM live_games lg
+    JOIN users u ON lg.created_by = u.id
+    WHERE lg.status IN ('waiting', 'playing')
+    ORDER BY lg.created_at DESC
+  `),
+
+  findByStatus: db.prepare(`
+    SELECT lg.*, u.name as created_by_name
+    FROM live_games lg
+    JOIN users u ON lg.created_by = u.id
+    WHERE lg.status = ?
+    ORDER BY lg.created_at DESC
+  `),
+
+  updateStatus: db.prepare(`
+    UPDATE live_games SET status = ? WHERE id = ?
+  `),
+
+  start: db.prepare(`
+    UPDATE live_games SET status = 'playing', started_at = datetime('now') WHERE id = ?
+  `),
+
+  finish: db.prepare(`
+    UPDATE live_games SET status = 'finished', finished_at = datetime('now'), winner_player_id = ? WHERE id = ?
+  `),
+
+  updateTurnState: db.prepare(`
+    UPDATE live_games SET current_player_index = ?, current_dart = ?, current_turn = ? WHERE id = ?
+  `),
+
+  delete: db.prepare('DELETE FROM live_games WHERE id = ?'),
+};
+
+const liveGamePlayerQueries = {
+  create: db.prepare(`
+    INSERT INTO live_game_players (id, live_game_id, user_id, player_order, remaining_score)
+    VALUES (?, ?, ?, ?, ?)
+  `),
+
+  findByGameId: db.prepare(`
+    SELECT lgp.*, u.name, u.avatar_url
+    FROM live_game_players lgp
+    JOIN users u ON lgp.user_id = u.id
+    WHERE lgp.live_game_id = ?
+    ORDER BY lgp.player_order
+  `),
+
+  findById: db.prepare('SELECT * FROM live_game_players WHERE id = ?'),
+
+  findByGameAndUser: db.prepare(`
+    SELECT * FROM live_game_players WHERE live_game_id = ? AND user_id = ?
+  `),
+
+  updateCricketMarks: db.prepare(`
+    UPDATE live_game_players
+    SET marks_15 = ?, marks_16 = ?, marks_17 = ?, marks_18 = ?,
+        marks_19 = ?, marks_20 = ?, marks_bull = ?, cricket_points = ?
+    WHERE id = ?
+  `),
+
+  updateRemainingScore: db.prepare(`
+    UPDATE live_game_players SET remaining_score = ? WHERE id = ?
+  `),
+
+  updateCurrentTarget: db.prepare(`
+    UPDATE live_game_players SET current_target = ? WHERE id = ?
+  `),
+};
+
+const liveGameThrowQueries = {
+  create: db.prepare(`
+    INSERT INTO live_game_throws (id, live_game_id, player_id, throw_order, turn_number, dart_in_turn, segment, multiplier, raw_value, is_bust, entered_by)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+  `),
+
+  findByGameId: db.prepare(`
+    SELECT * FROM live_game_throws WHERE live_game_id = ? ORDER BY throw_order
+  `),
+
+  findLastThrow: db.prepare(`
+    SELECT * FROM live_game_throws WHERE live_game_id = ? ORDER BY throw_order DESC LIMIT 1
+  `),
+
+  findByPlayerAndTurn: db.prepare(`
+    SELECT * FROM live_game_throws WHERE live_game_id = ? AND player_id = ? AND turn_number = ? ORDER BY dart_in_turn
+  `),
+
+  countByGame: db.prepare(`
+    SELECT COUNT(*) as count FROM live_game_throws WHERE live_game_id = ?
+  `),
+
+  delete: db.prepare('DELETE FROM live_game_throws WHERE id = ?'),
+};
+
+// Game comment queries
+const gameCommentQueries = {
+  create: db.prepare(`
+    INSERT INTO game_comments (id, game_id, user_id, content)
+    VALUES (?, ?, ?, ?)
+  `),
+
+  findByGameId: db.prepare(`
+    SELECT gc.*, u.name, u.avatar_url
+    FROM game_comments gc
+    JOIN users u ON gc.user_id = u.id
+    WHERE gc.game_id = ?
+    ORDER BY gc.created_at ASC
+  `),
+
+  findById: db.prepare('SELECT * FROM game_comments WHERE id = ?'),
+
+  delete: db.prepare('DELETE FROM game_comments WHERE id = ?'),
+};
+
 // Helper functions
 const users = {
   create(name, isAdmin = false) {
@@ -714,6 +924,104 @@ const gameDeletions = {
   findGamesWithPendingDeletion: () => gameDeletionQueries.findGamesWithPendingDeletion.all(),
 };
 
+// Live games helper
+const liveGames = {
+  create(gameType, startingScore, createdBy, playerUserIds) {
+    const id = uuidv4();
+
+    const createLiveGame = db.transaction(() => {
+      liveGameQueries.create.run(id, gameType, startingScore || null, createdBy);
+
+      for (let i = 0; i < playerUserIds.length; i++) {
+        const playerId = uuidv4();
+        const remainingScore = (gameType === '301' || gameType === '501') ? startingScore : null;
+        liveGamePlayerQueries.create.run(playerId, id, playerUserIds[i], i, remainingScore);
+      }
+
+      return id;
+    });
+
+    return createLiveGame();
+  },
+
+  findById(id) {
+    const game = liveGameQueries.findById.get(id);
+    if (game) {
+      game.players = liveGamePlayerQueries.findByGameId.all(id);
+      game.throws = liveGameThrowQueries.findByGameId.all(id);
+    }
+    return game;
+  },
+
+  findActive: () => {
+    const games = liveGameQueries.findActive.all();
+    return games.map(game => {
+      game.players = liveGamePlayerQueries.findByGameId.all(game.id);
+      return game;
+    });
+  },
+
+  findByStatus: (status) => {
+    const games = liveGameQueries.findByStatus.all(status);
+    return games.map(game => {
+      game.players = liveGamePlayerQueries.findByGameId.all(game.id);
+      return game;
+    });
+  },
+
+  start: (id) => liveGameQueries.start.run(id),
+
+  finish: (id, winnerPlayerId) => liveGameQueries.finish.run(winnerPlayerId, id),
+
+  updateTurnState: (id, playerIndex, dart, turn) =>
+    liveGameQueries.updateTurnState.run(playerIndex, dart, turn, id),
+
+  delete: (id) => liveGameQueries.delete.run(id),
+
+  addThrow(gameId, playerId, turnNumber, dartInTurn, segment, multiplier, rawValue, isBust, enteredBy) {
+    const id = uuidv4();
+    const throwCount = liveGameThrowQueries.countByGame.get(gameId).count;
+    liveGameThrowQueries.create.run(
+      id, gameId, playerId, throwCount + 1, turnNumber, dartInTurn,
+      segment, multiplier, rawValue, isBust ? 1 : 0, enteredBy
+    );
+    return id;
+  },
+
+  getLastThrow: (gameId) => liveGameThrowQueries.findLastThrow.get(gameId),
+
+  deleteThrow: (throwId) => liveGameThrowQueries.delete.run(throwId),
+
+  getThrowsByPlayerAndTurn: (gameId, playerId, turnNumber) =>
+    liveGameThrowQueries.findByPlayerAndTurn.all(gameId, playerId, turnNumber),
+
+  getPlayer: (playerId) => liveGamePlayerQueries.findById.get(playerId),
+
+  getPlayerByGameAndUser: (gameId, userId) => liveGamePlayerQueries.findByGameAndUser.get(gameId, userId),
+
+  updateCricketMarks(playerId, marks15, marks16, marks17, marks18, marks19, marks20, marksBull, points) {
+    liveGamePlayerQueries.updateCricketMarks.run(
+      marks15, marks16, marks17, marks18, marks19, marks20, marksBull, points, playerId
+    );
+  },
+
+  updateRemainingScore: (playerId, score) => liveGamePlayerQueries.updateRemainingScore.run(score, playerId),
+
+  updateCurrentTarget: (playerId, target) => liveGamePlayerQueries.updateCurrentTarget.run(target, playerId),
+};
+
+// Game comments helper
+const gameComments = {
+  create(gameId, userId, content) {
+    const id = uuidv4();
+    gameCommentQueries.create.run(id, gameId, userId, content);
+    return { id, game_id: gameId, user_id: userId, content };
+  },
+  findByGameId: (gameId) => gameCommentQueries.findByGameId.all(gameId),
+  findById: (id) => gameCommentQueries.findById.get(id),
+  delete: (id) => gameCommentQueries.delete.run(id),
+};
+
 // Bootstrap setup token for first admin
 function getOrCreateSetupToken() {
   if (users.count() > 0) return null;
@@ -761,6 +1069,8 @@ module.exports = {
   pushSubscriptions,
   crowns,
   gameDeletions,
+  liveGames,
+  gameComments,
   getOrCreateSetupToken,
   countUserAuthMethods,
 };

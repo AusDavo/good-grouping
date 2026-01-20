@@ -1,7 +1,7 @@
 const express = require('express');
-const { games, users, notifications, crowns, gameDeletions } = require('../db');
+const { games, users, notifications, crowns, gameDeletions, gameComments } = require('../db');
 const { requireAuth } = require('../middleware/auth');
-const { notifyGameCreated } = require('../pushService');
+const { notifyGameCreated, notifyGameComment } = require('../pushService');
 
 const router = express.Router();
 
@@ -160,10 +160,14 @@ router.get('/:id', (req, res) => {
     deletionApprovals = gameDeletions.findApprovals(game.id);
   }
 
+  // Get comments for this game
+  const comments = gameComments.findByGameId(game.id);
+
   res.render('games/show', {
     title: `Game - ${game.game_type}`,
     game,
     deletionApprovals,
+    comments,
   });
 });
 
@@ -347,6 +351,83 @@ router.post('/:id/cancel-deletion', (req, res) => {
 
   gameDeletions.cancelDeletion(game.id);
   res.redirect(`/games/${req.params.id}`);
+});
+
+// Add comment to game
+router.post('/:id/comments', (req, res) => {
+  const game = games.findById(req.params.id);
+
+  if (!game) {
+    return res.status(404).render('error', {
+      title: 'Not Found',
+      message: 'Game not found',
+    });
+  }
+
+  const { content } = req.body;
+
+  // Validate content
+  if (!content || content.trim().length === 0) {
+    return res.redirect(`/games/${req.params.id}`);
+  }
+
+  // Limit to 500 characters
+  const trimmedContent = content.trim().slice(0, 500);
+
+  // Create the comment
+  gameComments.create(game.id, req.user.id, trimmedContent);
+
+  // Notify other game participants
+  for (const player of game.players) {
+    if (player.user_id !== req.user.id) {
+      notifications.create(
+        player.user_id,
+        'game_comment',
+        game.id,
+        `${req.user.name} commented on the ${game.game_type} game from ${new Date(game.played_at).toLocaleDateString()}.`
+      );
+    }
+  }
+
+  // Send push notifications (async, don't await)
+  notifyGameComment(game, req.user).catch(err => {
+    console.error('Push notification error:', err);
+  });
+
+  res.redirect(`/games/${req.params.id}`);
+});
+
+// Delete comment
+router.post('/:gameId/comments/:commentId/delete', (req, res) => {
+  const game = games.findById(req.params.gameId);
+
+  if (!game) {
+    return res.status(404).render('error', {
+      title: 'Not Found',
+      message: 'Game not found',
+    });
+  }
+
+  const comment = gameComments.findById(req.params.commentId);
+
+  if (!comment) {
+    return res.status(404).render('error', {
+      title: 'Not Found',
+      message: 'Comment not found',
+    });
+  }
+
+  // Only comment author or admin can delete
+  if (comment.user_id !== req.user.id && !req.user.is_admin) {
+    return res.status(403).render('error', {
+      title: 'Access Denied',
+      message: 'You can only delete your own comments',
+    });
+  }
+
+  gameComments.delete(comment.id);
+
+  res.redirect(`/games/${req.params.gameId}`);
 });
 
 module.exports = router;

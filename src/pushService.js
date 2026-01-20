@@ -99,9 +99,32 @@ async function notifyGameCreated(game, players, creatorName) {
   }
 }
 
+async function notifyGameComment(game, commenter) {
+  const baseUrl = process.env.BASE_URL || 'http://localhost:3000';
+
+  for (const player of game.players) {
+    // Don't notify the commenter
+    if (player.user_id === commenter.id) continue;
+
+    const payload = {
+      title: 'New Comment',
+      body: `${commenter.name} commented on the ${game.game_type} game.`,
+      icon: '/icon-192.png',
+      badge: '/badge-72.png',
+      data: {
+        url: `${baseUrl}/games/${game.id}`,
+        gameId: game.id,
+      },
+    };
+
+    await sendPushToUser(player.user_id, payload);
+  }
+}
+
 module.exports = {
   sendPushToUser,
   notifyGameCreated,
+  notifyGameComment,
   isPushConfigured: () => pushConfigured,
   getVapidPublicKey: () => vapidPublicKey,
 };
