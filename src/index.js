@@ -1,12 +1,15 @@
 require('dotenv').config();
 
+const http = require('http');
 const express = require('express');
 const session = require('express-session');
 const path = require('path');
-const { games, crowns, getOrCreateSetupToken } = require('./db');
+const { games, crowns, liveGames, getOrCreateSetupToken } = require('./db');
 const { loadUser } = require('./middleware/auth');
+const { initWebSocket } = require('./websocket');
 
 const app = express();
+const server = http.createServer(app);
 const PORT = process.env.PORT || 3000;
 
 // Session store setup
@@ -24,8 +27,8 @@ app.use(express.static(path.join(__dirname, '../public')));
 // Serve uploads from data directory (for persistence across container restarts)
 app.use('/uploads', express.static(path.join(__dirname, '../data/uploads')));
 
-// Session middleware
-app.use(session({
+// Session middleware (saved for WebSocket auth)
+const sessionMiddleware = session({
   store: new SQLiteStore({
     db: 'sessions.db',
     dir: path.join(__dirname, '../data'),
@@ -38,7 +41,8 @@ app.use(session({
     httpOnly: true,
     maxAge: 30 * 24 * 60 * 60 * 1000, // 30 days
   },
-}));
+});
+app.use(sessionMiddleware);
 
 // Trust proxy if configured (for running behind reverse proxy)
 if (process.env.TRUST_PROXY === 'true') {
@@ -52,6 +56,7 @@ app.use(loadUser);
 const authRoutes = require('./routes/auth');
 const adminRoutes = require('./routes/admin');
 const gamesRoutes = require('./routes/games');
+const liveGamesRoutes = require('./routes/live-games');
 const notificationsRoutes = require('./routes/notifications');
 const pushRoutes = require('./routes/push');
 const usersRoutes = require('./routes/users');
@@ -59,6 +64,7 @@ const usersRoutes = require('./routes/users');
 app.use('/', authRoutes);
 app.use('/admin', adminRoutes);
 app.use('/games', gamesRoutes);
+app.use('/live-games', liveGamesRoutes);
 app.use('/notifications', notificationsRoutes);
 app.use('/push', pushRoutes);
 app.use('/users', usersRoutes);
@@ -116,8 +122,11 @@ app.use((err, req, res, next) => {
   });
 });
 
+// Initialize WebSocket server
+initWebSocket(server, sessionMiddleware);
+
 // Start server
-app.listen(PORT, () => {
+server.listen(PORT, () => {
   const baseUrl = process.env.BASE_URL || `http://localhost:${PORT}`;
   console.log(`Server running on ${baseUrl}`);
 

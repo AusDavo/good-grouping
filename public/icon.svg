@@ -1,0 +1,83 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <defs>
+    <!-- Neon glow filters -->
+    <filter id="neon-pink" x="-50%" y="-50%" width="200%" height="200%">
+      <feGaussianBlur stdDeviation="8" result="blur"/>
+      <feMerge>
+        <feMergeNode in="blur"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+    <filter id="neon-green" x="-50%" y="-50%" width="200%" height="200%">
+      <feGaussianBlur stdDeviation="6" result="blur"/>
+      <feMerge>
+        <feMergeNode in="blur"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+    <!-- Background gradient -->
+    <radialGradient id="bg-grad" cx="50%" cy="50%" r="50%">
+      <stop offset="0%" stop-color="#1a2e1a"/>
+      <stop offset="100%" stop-color="#0d1f0d"/>
+    </radialGradient>
+  </defs>
+
+  <!-- Background circle -->
+  <circle cx="256" cy="256" r="256" fill="url(#bg-grad)"/>
+
+  <!-- Outer ring (wood frame) -->
+  <circle cx="256" cy="256" r="240" fill="none" stroke="#4a3728" stroke-width="24"/>
+  <circle cx="256" cy="256" r="240" fill="none" stroke="#5d4632" stroke-width="16"/>
+
+  <!-- Dartboard rings -->
+  <!-- Outer double ring -->
+  <circle cx="256" cy="256" r="200" fill="#1a1a1a" stroke="#ff2d95" stroke-width="3" filter="url(#neon-pink)"/>
+
+  <!-- Triple ring area -->
+  <circle cx="256" cy="256" r="160" fill="#0d1f0d"/>
+  <circle cx="256" cy="256" r="130" fill="none" stroke="#00ff88" stroke-width="2" filter="url(#neon-green)"/>
+
+  <!-- Inner sections -->
+  <circle cx="256" cy="256" r="100" fill="#1a2e1a"/>
+  <circle cx="256" cy="256" r="70" fill="#0d1f0d"/>
+
+  <!-- Single bull -->
+  <circle cx="256" cy="256" r="45" fill="#00ff88" filter="url(#neon-green)"/>
+
+  <!-- Double bull (bullseye) -->
+  <circle cx="256" cy="256" r="22" fill="#ff2d95" filter="url(#neon-pink)"/>
+
+  <!-- Crosshairs / wire segments -->
+  <g stroke="#ffcc00" stroke-width="2" opacity="0.8">
+    <line x1="256" y1="56" x2="256" y2="200"/>
+    <line x1="256" y1="312" x2="256" y2="456"/>
+    <line x1="56" y1="256" x2="200" y2="256"/>
+    <line x1="312" y1="256" x2="456" y2="256"/>
+  </g>
+
+  <!-- Diagonal wires -->
+  <g stroke="#ffcc00" stroke-width="1.5" opacity="0.6">
+    <line x1="115" y1="115" x2="185" y2="185"/>
+    <line x1="327" y1="185" x2="397" y2="115"/>
+    <line x1="115" y1="397" x2="185" y2="327"/>
+    <line x1="327" y1="327" x2="397" y2="397"/>
+  </g>
+
+  <!-- Dart in bullseye -->
+  <g transform="translate(256, 256) rotate(-45)">
+    <!-- Dart shaft -->
+    <rect x="-8" y="-120" width="16" height="80" fill="#c0c0c0" rx="2"/>
+    <!-- Dart barrel -->
+    <rect x="-10" y="-45" width="20" height="35" fill="#ffcc00" rx="3"/>
+    <!-- Dart point -->
+    <polygon points="0,-10 -6,-45 6,-45" fill="#e0e0e0"/>
+    <!-- Dart flights -->
+    <path d="M-8,-120 L-35,-160 L-8,-140 Z" fill="#ff2d95"/>
+    <path d="M8,-120 L35,-160 L8,-140 Z" fill="#ff2d95"/>
+    <path d="M0,-125 L0,-175 L-8,-140 Z" fill="#00ff88"/>
+    <path d="M0,-125 L0,-175 L8,-140 Z" fill="#00ff88"/>
+  </g>
+
+  <!-- Highlight reflection -->
+  <ellipse cx="180" cy="150" rx="40" ry="20" fill="white" opacity="0.08" transform="rotate(-30, 180, 150)"/>
+</svg>

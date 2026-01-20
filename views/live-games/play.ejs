@@ -1,0 +1,256 @@
+<%
+function renderMarks(count) {
+  count = count || 0;
+  if (count === 0) return '<span class="text-gray-600">---</span>';
+  if (count === 1) return '<span class="text-yellow-500">/</span><span class="text-gray-600">--</span>';
+  if (count === 2) return '<span class="text-yellow-500">//</span><span class="text-gray-600">-</span>';
+  if (count >= 3) return '<span class="text-green-500">X</span>' + (count > 3 ? '<span class="text-neon-pink">+' + (count - 3) + '</span>' : '');
+  return '';
+}
+%>
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title><%= title %> - Good Grouping</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/css/style.css">
+</head>
+<body class="min-h-screen flex flex-col scrollbar-pub">
+  <!-- Minimal Nav for Live Game -->
+  <nav class="bg-pub-wood-dark border-b-4 border-pub-wood-medium sticky top-0 z-50 shadow-warm">
+    <div class="max-w-4xl mx-auto px-4 py-2 flex justify-between items-center">
+      <a href="/" class="text-neon-pink font-pub-heading text-sm">Good Grouping</a>
+      <div class="flex items-center gap-4">
+        <span id="connection-status-text" class="text-xs text-pub-chalk-accent">Connecting...</span>
+        <span id="connection-status" class="w-2 h-2 rounded-full bg-yellow-500"></span>
+      </div>
+    </div>
+  </nav>
+
+  <main class="flex-1 max-w-4xl mx-auto w-full px-4 py-4">
+    <div class="space-y-4" id="live-game-container" data-game-id="<%= game.id %>" data-game-type="<%= game.game_type %>" data-ws-url="<%= wsUrl %>">
+
+      <!-- Header -->
+      <div class="flex justify-between items-center">
+        <h1 class="text-xl font-pub-heading text-neon-pink" style="text-shadow: 0 0 10px #ff2d95;">
+          <%= game.game_type %>
+        </h1>
+        <% if (game.starting_score) { %>
+          <span class="text-pub-chalk-accent text-sm">Start: <%= game.starting_score %></span>
+        <% } %>
+      </div>
+
+      <!-- Turn Indicator -->
+      <div id="turn-indicator" class="card rounded-lg p-3 text-center">
+        <div class="text-sm text-pub-chalk-accent">Current Turn</div>
+        <div class="text-lg font-pub-heading text-neon-blue" id="current-player-name"><%= currentPlayer.name %></div>
+        <div class="flex justify-center gap-2 mt-2">
+          <span class="dart-indicator <%= game.current_dart >= 1 ? (game.current_dart === 1 ? 'current' : 'thrown') : '' %>" data-dart="1"></span>
+          <span class="dart-indicator <%= game.current_dart >= 2 ? (game.current_dart === 2 ? 'current' : 'thrown') : '' %>" data-dart="2"></span>
+          <span class="dart-indicator <%= game.current_dart === 3 ? 'current' : '' %>" data-dart="3"></span>
+        </div>
+      </div>
+
+      <!-- Scoreboard -->
+      <div id="scoreboard" class="card rounded-xl p-4">
+        <% if (game.game_type === 'Cricket') { %>
+          <!-- Cricket Scoreboard -->
+          <div class="overflow-x-auto">
+            <table class="w-full text-sm">
+              <thead>
+                <tr class="text-pub-chalk-accent">
+                  <th class="text-left p-2">Player</th>
+                  <th class="p-2 cricket-header" data-segment="15">15</th>
+                  <th class="p-2 cricket-header" data-segment="16">16</th>
+                  <th class="p-2 cricket-header" data-segment="17">17</th>
+                  <th class="p-2 cricket-header" data-segment="18">18</th>
+                  <th class="p-2 cricket-header" data-segment="19">19</th>
+                  <th class="p-2 cricket-header" data-segment="20">20</th>
+                  <th class="p-2 cricket-header" data-segment="bull">B</th>
+                  <th class="p-2 text-right">Pts</th>
+                </tr>
+              </thead>
+              <tbody id="cricket-scores">
+                <% game.players.forEach((player, idx) => { %>
+                  <tr class="player-row <%= idx === game.current_player_index ? 'active' : '' %>" data-player-id="<%= player.id %>" data-player-index="<%= idx %>">
+                    <td class="p-2 font-pub-heading text-aged-cream player-name"><%= player.name %></td>
+                    <td class="p-2 text-center marks-15"><%- renderMarks(player.marks_15) %></td>
+                    <td class="p-2 text-center marks-16"><%- renderMarks(player.marks_16) %></td>
+                    <td class="p-2 text-center marks-17"><%- renderMarks(player.marks_17) %></td>
+                    <td class="p-2 text-center marks-18"><%- renderMarks(player.marks_18) %></td>
+                    <td class="p-2 text-center marks-19"><%- renderMarks(player.marks_19) %></td>
+                    <td class="p-2 text-center marks-20"><%- renderMarks(player.marks_20) %></td>
+                    <td class="p-2 text-center marks-bull"><%- renderMarks(player.marks_bull) %></td>
+                    <td class="p-2 text-right font-bold text-neon-green cricket-points"><%= player.cricket_points || 0 %></td>
+                  </tr>
+                <% }) %>
+              </tbody>
+            </table>
+          </div>
+        <% } else if (game.game_type === '301' || game.game_type === '501') { %>
+          <!-- 01 Scoreboard -->
+          <div class="grid gap-4" id="score-01-container">
+            <% game.players.forEach((player, idx) => { %>
+              <div class="player-score-card p-4 rounded-lg bg-pub-wood-dark/50 <%= idx === game.current_player_index ? 'active' : '' %>" data-player-id="<%= player.id %>" data-player-index="<%= idx %>">
+                <div class="flex justify-between items-center">
+                  <span class="font-pub-heading text-aged-cream player-name"><%= player.name %></span>
+                  <span class="text-3xl font-bold text-neon-green remaining-score"><%= player.remaining_score %></span>
+                </div>
+              </div>
+            <% }) %>
+          </div>
+        <% } else if (game.game_type === 'Around the World') { %>
+          <!-- Around the World Scoreboard -->
+          <div class="space-y-4" id="atw-container">
+            <% game.players.forEach((player, idx) => { %>
+              <div class="player-atw-card p-4 rounded-lg bg-pub-wood-dark/50 <%= idx === game.current_player_index ? 'active' : '' %>" data-player-id="<%= player.id %>" data-player-index="<%= idx %>">
+                <div class="flex justify-between items-center mb-2">
+                  <span class="font-pub-heading text-aged-cream player-name"><%= player.name %></span>
+                  <span class="text-2xl font-bold text-neon-blue current-target">
+                    Target: <%= player.current_target > 20 ? 'Bull' : player.current_target %>
+                  </span>
+                </div>
+                <div class="flex flex-wrap gap-1 progress-display">
+                  <% for (let i = 1; i <= 21; i++) { %>
+                    <span class="w-6 h-6 rounded text-xs flex items-center justify-center
+                      <%= i < player.current_target ? 'bg-green-700 text-green-200' :
+                         (i === player.current_target ? 'bg-neon-yellow text-black' : 'bg-pub-wood-medium text-pub-chalk-accent') %>"
+                      data-target="<%= i %>">
+                      <%= i > 20 ? 'B' : i %>
+                    </span>
+                  <% } %>
+                </div>
+              </div>
+            <% }) %>
+          </div>
+        <% } %>
+      </div>
+
+      <!-- Input Controls -->
+      <div id="input-controls" class="card rounded-xl p-4 space-y-4">
+        <% if (game.game_type === 'Cricket') { %>
+          <!-- Cricket Input -->
+          <div class="flex gap-2 justify-center mb-4">
+            <button class="multiplier-btn px-4 py-2 rounded bg-pub-wood-medium text-aged-cream" data-multiplier="1" data-active="true">Single</button>
+            <button class="multiplier-btn px-4 py-2 rounded bg-pub-wood-dark text-pub-chalk-accent" data-multiplier="2">Double</button>
+            <button class="multiplier-btn px-4 py-2 rounded bg-pub-wood-dark text-pub-chalk-accent" data-multiplier="3">Triple</button>
+          </div>
+          <div class="grid grid-cols-4 gap-2">
+            <button class="segment-btn p-3 rounded bg-pub-green-700 text-neon-green font-bold hover:bg-pub-green-600" data-segment="15">15</button>
+            <button class="segment-btn p-3 rounded bg-pub-green-700 text-neon-green font-bold hover:bg-pub-green-600" data-segment="16">16</button>
+            <button class="segment-btn p-3 rounded bg-pub-green-700 text-neon-green font-bold hover:bg-pub-green-600" data-segment="17">17</button>
+            <button class="segment-btn p-3 rounded bg-pub-green-700 text-neon-green font-bold hover:bg-pub-green-600" data-segment="18">18</button>
+            <button class="segment-btn p-3 rounded bg-pub-green-700 text-neon-green font-bold hover:bg-pub-green-600" data-segment="19">19</button>
+            <button class="segment-btn p-3 rounded bg-pub-green-700 text-neon-green font-bold hover:bg-pub-green-600" data-segment="20">20</button>
+            <button class="segment-btn p-3 rounded bg-red-700 text-red-200 font-bold hover:bg-red-600" data-segment="25">Bull</button>
+            <button class="segment-btn p-3 rounded bg-gray-700 text-gray-300 hover:bg-gray-600" data-segment="0">Miss</button>
+          </div>
+        <% } else if (game.game_type === '301' || game.game_type === '501') { %>
+          <!-- 01 Input -->
+          <div class="flex gap-2 justify-center mb-4">
+            <button class="multiplier-btn px-4 py-2 rounded bg-pub-wood-medium text-aged-cream" data-multiplier="1" data-active="true">Single</button>
+            <button class="multiplier-btn px-4 py-2 rounded bg-pub-wood-dark text-pub-chalk-accent" data-multiplier="2">Double</button>
+            <button class="multiplier-btn px-4 py-2 rounded bg-pub-wood-dark text-pub-chalk-accent" data-multiplier="3">Triple</button>
+          </div>
+          <div class="grid grid-cols-5 gap-2">
+            <% for (let i = 1; i <= 20; i++) { %>
+              <button class="segment-btn p-2 rounded bg-pub-green-700 text-neon-green font-bold hover:bg-pub-green-600 text-sm" data-segment="<%= i %>"><%= i %></button>
+            <% } %>
+          </div>
+          <div class="grid grid-cols-3 gap-2 mt-2">
+            <button class="segment-btn p-3 rounded bg-red-700 text-red-200 font-bold hover:bg-red-600" data-segment="25">Bull 25</button>
+            <button class="segment-btn p-3 rounded bg-red-900 text-red-200 font-bold hover:bg-red-800" data-segment="25" data-force-multiplier="2">D-Bull 50</button>
+            <button class="segment-btn p-3 rounded bg-gray-700 text-gray-300 hover:bg-gray-600" data-segment="0">Miss</button>
+          </div>
+        <% } else if (game.game_type === 'Around the World') { %>
+          <!-- Around the World Input -->
+          <div class="grid grid-cols-2 gap-4">
+            <button id="hit-btn" class="p-6 rounded-lg bg-green-700 text-green-100 font-pub-heading text-xl hover:bg-green-600 active:scale-95 transition-transform">
+              HIT
+            </button>
+            <button id="miss-btn" class="p-6 rounded-lg bg-gray-700 text-gray-300 font-pub-heading text-xl hover:bg-gray-600 active:scale-95 transition-transform">
+              MISS
+            </button>
+          </div>
+        <% } %>
+
+        <!-- Undo Button -->
+        <div class="flex justify-center mt-4">
+          <button id="undo-btn" class="px-6 py-2 rounded bg-neon-orange/20 text-neon-orange border border-neon-orange hover:bg-neon-orange hover:text-black transition-colors">
+            Undo Last Throw
+          </button>
+        </div>
+      </div>
+
+      <!-- Recent Throws -->
+      <div class="card rounded-xl p-4">
+        <h3 class="text-sm font-pub-heading text-pub-chalk-accent mb-2">Recent Throws</h3>
+        <div id="recent-throws" class="flex flex-wrap gap-2">
+          <% if (game.throws && game.throws.length > 0) { %>
+            <% game.throws.slice(-10).forEach(t => { %>
+              <span class="px-2 py-1 rounded text-xs <%= t.is_bust ? 'bg-red-900 text-red-300' : 'bg-pub-wood-medium text-aged-cream' %>">
+                <%= t.segment ? (t.multiplier > 1 ? (t.multiplier === 3 ? 'T' : 'D') : '') + (t.segment === 25 ? 'Bull' : t.segment) : 'Miss' %>
+                <%= t.is_bust ? '(Bust)' : '' %>
+              </span>
+            <% }) %>
+          <% } else { %>
+            <span class="text-pub-chalk-accent text-sm">No throws yet</span>
+          <% } %>
+        </div>
+      </div>
+
+      <!-- Actions -->
+      <div class="flex gap-4">
+        <a href="/live-games/<%= game.id %>" class="flex-1 text-center px-4 py-2 rounded bg-pub-wood-medium text-pub-chalk-accent hover:text-aged-cream">
+          View Summary
+        </a>
+        <a href="/live-games" class="px-4 py-2 rounded bg-pub-wood-dark text-pub-chalk-accent hover:text-aged-cream">
+          All Games
+        </a>
+      </div>
+    </div>
+  </main>
+
+  <style>
+    .dart-indicator {
+      width: 12px;
+      height: 12px;
+      border-radius: 50%;
+      background: #4a5568;
+      display: inline-block;
+    }
+    .dart-indicator.thrown {
+      background: #10b981;
+    }
+    .dart-indicator.current {
+      background: #fbbf24;
+      animation: pulse 1s infinite;
+    }
+    .player-row.active {
+      background: rgba(59, 130, 246, 0.2);
+    }
+    .player-score-card.active, .player-atw-card.active {
+      border: 2px solid #3b82f6;
+      box-shadow: 0 0 10px rgba(59, 130, 246, 0.5);
+    }
+    .multiplier-btn[data-active="true"] {
+      background: #10b981 !important;
+      color: white !important;
+    }
+    @keyframes pulse {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.5; }
+    }
+    .cricket-header.closed {
+      text-decoration: line-through;
+      opacity: 0.5;
+    }
+  </style>
+
+  <script src="/js/live-scoring.js"></script>
+</body>
+</html>

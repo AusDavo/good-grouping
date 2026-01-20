@@ -1,0 +1,52 @@
+<%- include('../layout', { body: `
+<div class="max-w-lg mx-auto">
+  <h1 class="text-2xl font-pub-heading text-neon-pink mb-6" style="text-shadow: 0 0 10px #ff2d95;">
+    Start Live Game
+  </h1>
+
+  ${typeof error !== 'undefined' && error ? `
+    <div class="bg-red-900/50 border border-red-500 text-red-200 px-4 py-3 rounded-lg mb-6">
+      ${error}
+    </div>
+  ` : ''}
+
+  <form action="/live-games" method="POST" class="card rounded-xl p-6 space-y-6">
+    <!-- Game Type -->
+    <div>
+      <label class="block text-pub-chalk-accent text-sm font-pub-heading mb-2">Game Type</label>
+      <select name="gameType" class="w-full bg-pub-wood-dark border border-pub-wood-light rounded-lg px-4 py-2 text-aged-cream focus:ring-2 focus:ring-neon-blue focus:border-transparent">
+        <option value="Cricket">Cricket</option>
+        <option value="501">501</option>
+        <option value="301">301</option>
+        <option value="Around the World">Around the World</option>
+      </select>
+    </div>
+
+    <!-- Players -->
+    <div>
+      <label class="block text-pub-chalk-accent text-sm font-pub-heading mb-2">Players (select 2+)</label>
+      <div class="grid grid-cols-2 gap-2 max-h-60 overflow-y-auto scrollbar-pub p-2 bg-pub-wood-dark/50 rounded-lg">
+        ${allUsers.map(u => `
+          <label class="flex items-center gap-2 p-2 rounded hover:bg-pub-wood-medium/30 cursor-pointer">
+            <input type="checkbox" name="playerIds" value="${u.id}"
+              class="rounded bg-pub-wood-dark border-pub-wood-light text-neon-green focus:ring-neon-green"
+              ${u.id === user.id ? 'checked' : ''}>
+            <span class="text-sm text-aged-cream">${u.name}</span>
+          </label>
+        `).join('')}
+      </div>
+      <p class="text-xs text-pub-chalk-accent mt-1">Select at least 2 players. Player order will be the selection order.</p>
+    </div>
+
+    <!-- Submit -->
+    <div class="flex gap-4">
+      <button type="submit" class="btn-neon-green px-6 py-2 rounded-lg font-pub-heading flex-1">
+        Create Game
+      </button>
+      <a href="/live-games" class="btn-neon-orange px-6 py-2 rounded-lg font-pub-heading text-center">
+        Cancel
+      </a>
+    </div>
+  </form>
+</div>
+` }) %>

@@ -1,0 +1,68 @@
+<%- include('../layout', { body: `
+<div class="space-y-6">
+  <!-- Header -->
+  <div class="flex justify-between items-center">
+    <h1 class="text-2xl font-pub-heading text-neon-pink" style="text-shadow: 0 0 10px #ff2d95;">
+      Live Games
+    </h1>
+    <a href="/live-games/new" class="btn-neon-green px-4 py-2 rounded-lg font-pub-heading text-sm flex items-center gap-2">
+      <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+      </svg>
+      New Live Game
+    </a>
+  </div>
+
+  <!-- Active Games -->
+  ${activeGames.length === 0 ? `
+    <div class="card rounded-xl p-8 text-center">
+      <div class="text-6xl mb-4">🎯</div>
+      <h2 class="text-xl font-pub-heading text-pub-chalk-text mb-2">No Active Games</h2>
+      <p class="text-pub-chalk-accent mb-4">Start a new live game to begin scoring in real-time!</p>
+      <a href="/live-games/new" class="btn-neon-blue px-6 py-2 rounded-lg font-pub-heading inline-block">
+        Start a Game
+      </a>
+    </div>
+  ` : `
+    <div class="grid gap-4">
+      ${activeGames.map(game => `
+        <div class="card rounded-xl p-4">
+          <div class="flex justify-between items-start">
+            <div>
+              <div class="flex items-center gap-2 mb-2">
+                <span class="text-lg font-pub-heading text-neon-blue">${game.game_type}</span>
+                ${game.status === 'waiting' ? `
+                  <span class="px-2 py-0.5 bg-yellow-900/50 text-yellow-400 text-xs rounded-full">Waiting</span>
+                ` : game.status === 'playing' ? `
+                  <span class="px-2 py-0.5 bg-green-900/50 text-green-400 text-xs rounded-full animate-pulse">Live</span>
+                ` : ''}
+              </div>
+              <div class="text-sm text-pub-chalk-accent">
+                Created by ${game.created_by_name}
+              </div>
+              <div class="flex flex-wrap gap-1 mt-2">
+                ${game.players.map(player => `
+                  <span class="px-2 py-0.5 bg-pub-wood-medium/50 text-aged-cream text-xs rounded">
+                    ${player.name}
+                  </span>
+                `).join('')}
+              </div>
+            </div>
+            <div class="flex flex-col gap-2">
+              ${game.status === 'waiting' ? `
+                <a href="/live-games/${game.id}/lobby" class="btn-neon-yellow px-4 py-1.5 rounded text-sm font-pub-heading">
+                  Join Lobby
+                </a>
+              ` : `
+                <a href="/live-games/${game.id}/play" class="btn-neon-green px-4 py-1.5 rounded text-sm font-pub-heading">
+                  Watch/Play
+                </a>
+              `}
+            </div>
+          </div>
+        </div>
+      `).join('')}
+    </div>
+  `}
+</div>
+` }) %>

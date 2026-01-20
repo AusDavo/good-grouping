@@ -4,6 +4,12 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title><%= title %> - Good Grouping</title>
+  <link rel="manifest" href="/manifest.webmanifest">
+  <link rel="icon" href="/icon.svg" type="image/svg+xml">
+  <link rel="apple-touch-icon" href="/apple-touch-icon.png">
+  <meta name="theme-color" content="#ff2d95">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
@@ -26,6 +32,15 @@
 
       <% if (typeof user !== 'undefined' && user) { %>
         <div class="flex items-center gap-4">
+          <!-- Live Games Link -->
+          <a href="/live-games" class="text-aged-cream hover:text-neon-green transition-colors duration-200 text-sm font-pub-heading uppercase tracking-wide flex items-center gap-2">
+            <span class="relative flex h-2 w-2">
+              <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-neon-green opacity-75"></span>
+              <span class="relative inline-flex rounded-full h-2 w-2 bg-neon-green"></span>
+            </span>
+            <span class="hidden sm:inline">Live</span>
+          </a>
+
           <!-- New Game Link -->
           <a href="/games/new" class="text-aged-cream hover:text-neon-blue transition-colors duration-200 text-sm font-pub-heading uppercase tracking-wide flex items-center gap-2">
             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">

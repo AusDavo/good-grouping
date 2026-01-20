@@ -6,15 +6,22 @@ WORKDIR /app
 COPY package*.json ./
 
 # Install all dependencies (including devDependencies for Tailwind)
-RUN npm install
+RUN npm install && npm install sharp
 
 # Copy source files needed for CSS build
 COPY tailwind.config.js postcss.config.js ./
 COPY src/styles/ ./src/styles/
 COPY views/ ./views/
 
+# Copy public assets for icon generation
+COPY public/ ./public/
+COPY scripts/ ./scripts/
+
 # Build CSS
 RUN npm run build:css
+
+# Generate PNG icons from SVG
+RUN node scripts/generate-icons.js
 
 # Production stage
 FROM node:20-alpine
@@ -37,6 +44,11 @@ COPY public/ ./public/
 
 # Copy built CSS from builder stage
 COPY --from=builder /app/public/css/style.css ./public/css/style.css
+
+# Copy generated icons from builder stage
+COPY --from=builder /app/public/icon-192.png ./public/icon-192.png
+COPY --from=builder /app/public/icon-512.png ./public/icon-512.png
+COPY --from=builder /app/public/apple-touch-icon.png ./public/apple-touch-icon.png
 
 # Create data directory
 RUN mkdir -p /app/data

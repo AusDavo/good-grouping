@@ -1,0 +1,80 @@
+<%- include('../layout', { body: `
+<div class="max-w-lg mx-auto space-y-6">
+  <h1 class="text-2xl font-pub-heading text-neon-pink" style="text-shadow: 0 0 10px #ff2d95;">
+    Game Lobby
+  </h1>
+
+  <div class="card rounded-xl p-6">
+    <!-- Game Info -->
+    <div class="text-center mb-6">
+      <div class="text-3xl font-pub-heading text-neon-blue mb-2">${game.game_type}</div>
+      ${game.starting_score ? `
+        <div class="text-pub-chalk-accent">Starting Score: ${game.starting_score}</div>
+      ` : ''}
+      <div class="text-sm text-pub-chalk-accent mt-2">
+        Created by ${game.created_by_name}
+      </div>
+    </div>
+
+    <!-- Players List -->
+    <div class="mb-6">
+      <h2 class="text-sm font-pub-heading text-pub-chalk-accent mb-3">Players</h2>
+      <div class="space-y-2">
+        ${game.players.map((player, index) => `
+          <div class="flex items-center gap-3 p-3 bg-pub-wood-dark/50 rounded-lg">
+            <div class="w-8 h-8 rounded-full bg-pub-green-700 flex items-center justify-center border-2 border-neon-green text-neon-green font-bold text-sm">
+              ${index + 1}
+            </div>
+            ${player.avatar_url ? `
+              <img src="${player.avatar_url}" alt="" class="w-8 h-8 rounded-full object-cover">
+            ` : ''}
+            <span class="text-aged-cream font-pub-heading">${player.name}</span>
+          </div>
+        `).join('')}
+      </div>
+    </div>
+
+    <!-- Actions -->
+    <div class="space-y-3">
+      ${isCreator ? `
+        <form action="/live-games/${game.id}/start" method="POST">
+          <button type="submit" class="w-full btn-neon-green px-6 py-3 rounded-lg font-pub-heading text-lg">
+            Start Game
+          </button>
+        </form>
+        <form action="/live-games/${game.id}/abandon" method="POST" onsubmit="return confirm('Abandon this game?')">
+          <button type="submit" class="w-full btn-neon-orange px-4 py-2 rounded-lg font-pub-heading text-sm">
+            Abandon Game
+          </button>
+        </form>
+      ` : isPlayer ? `
+        <div class="text-center text-pub-chalk-accent p-4">
+          <div class="animate-pulse text-neon-yellow">Waiting for ${game.created_by_name} to start the game...</div>
+        </div>
+      ` : `
+        <div class="text-center text-pub-chalk-accent p-4">
+          <div class="text-neon-blue">You're spectating this game</div>
+        </div>
+      `}
+
+      <a href="/live-games" class="block text-center text-pub-chalk-accent hover:text-neon-blue text-sm">
+        Back to Live Games
+      </a>
+    </div>
+  </div>
+</div>
+
+<script>
+  // Auto-refresh to check if game started
+  setInterval(() => {
+    fetch('/live-games/${game.id}/state')
+      .then(r => r.json())
+      .then(data => {
+        if (data.status === 'playing') {
+          window.location.href = '/live-games/${game.id}/play';
+        }
+      })
+      .catch(() => {});
+  }, 3000);
+</script>
+` }) %>
