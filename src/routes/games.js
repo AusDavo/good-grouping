@@ -1,9 +1,47 @@
 const express = require('express');
-const { games, users, notifications, crowns, gameDeletions, gameComments } = require('../db');
+const multer = require('multer');
+const path = require('path');
+const fs = require('fs');
+const { v4: uuidv4 } = require('uuid');
+const { games, users, notifications, crowns, gameDeletions, gameComments, gamePhotos } = require('../db');
 const { requireAuth } = require('../middleware/auth');
 const { notifyGameCreated, notifyGameComment } = require('../pushService');
 
 const router = express.Router();
+
+// Ensure upload directory exists
+const uploadDir = path.join(__dirname, '../../data/uploads/game-photos');
+if (!fs.existsSync(uploadDir)) {
+  fs.mkdirSync(uploadDir, { recursive: true });
+}
+
+// Multer configuration for photo uploads
+const storage = multer.diskStorage({
+  destination: (req, file, cb) => {
+    cb(null, uploadDir);
+  },
+  filename: (req, file, cb) => {
+    const ext = path.extname(file.originalname).toLowerCase();
+    cb(null, `${uuidv4()}${ext}`);
+  },
+});
+
+const fileFilter = (req, file, cb) => {
+  const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp'];
+  if (allowedTypes.includes(file.mimetype)) {
+    cb(null, true);
+  } else {
+    cb(new Error('Invalid file type. Only JPEG, PNG, GIF, and WebP are allowed.'), false);
+  }
+};
+
+const upload = multer({
+  storage,
+  fileFilter,
+  limits: {
+    fileSize: 5 * 1024 * 1024, // 5MB limit
+  },
+});
 
 // All game routes require authentication
 router.use(requireAuth);
@@ -163,11 +201,19 @@ router.get('/:id', (req, res) => {
   // Get comments for this game
   const comments = gameComments.findByGameId(game.id);
 
+  // Get photos for this game
+  const photos = gamePhotos.findByGameId(game.id);
+  const photoCount = photos.length;
+  const maxPhotos = 10;
+
   res.render('games/show', {
     title: `Game - ${game.game_type}`,
     game,
     deletionApprovals,
     comments,
+    photos,
+    photoCount,
+    maxPhotos,
   });
 });
 
@@ -426,6 +472,99 @@ router.post('/:gameId/comments/:commentId/delete', (req, res) => {
   }
 
   gameComments.delete(comment.id);
+
+  res.redirect(`/games/${req.params.gameId}`);
+});
+
+// Upload photo to game
+router.post('/:id/photos', upload.single('photo'), (req, res) => {
+  const game = games.findById(req.params.id);
+
+  if (!game) {
+    return res.status(404).render('error', {
+      title: 'Not Found',
+      message: 'Game not found',
+    });
+  }
+
+  // Check if user is a participant
+  const isParticipant = game.players.some(p => p.user_id === req.user.id);
+  if (!isParticipant) {
+    // Delete uploaded file if exists
+    if (req.file) {
+      fs.unlink(req.file.path, () => {});
+    }
+    return res.status(403).render('error', {
+      title: 'Access Denied',
+      message: 'Only game participants can upload photos',
+    });
+  }
+
+  // Check photo limit
+  const photoCount = gamePhotos.countByGameId(game.id);
+  if (photoCount >= 10) {
+    // Delete uploaded file if exists
+    if (req.file) {
+      fs.unlink(req.file.path, () => {});
+    }
+    return res.status(400).render('error', {
+      title: 'Limit Reached',
+      message: 'Maximum of 10 photos per game',
+    });
+  }
+
+  // Check if file was uploaded
+  if (!req.file) {
+    return res.redirect(`/games/${req.params.id}`);
+  }
+
+  // Get caption from form
+  const caption = req.body.caption ? req.body.caption.trim().slice(0, 200) : null;
+
+  // Create photo record
+  gamePhotos.create(game.id, req.user.id, req.file.filename, caption);
+
+  res.redirect(`/games/${req.params.id}`);
+});
+
+// Delete photo
+router.post('/:gameId/photos/:photoId/delete', (req, res) => {
+  const game = games.findById(req.params.gameId);
+
+  if (!game) {
+    return res.status(404).render('error', {
+      title: 'Not Found',
+      message: 'Game not found',
+    });
+  }
+
+  const photo = gamePhotos.findById(req.params.photoId);
+
+  if (!photo) {
+    return res.status(404).render('error', {
+      title: 'Not Found',
+      message: 'Photo not found',
+    });
+  }
+
+  // Only photo uploader or admin can delete
+  if (photo.user_id !== req.user.id && !req.user.is_admin) {
+    return res.status(403).render('error', {
+      title: 'Access Denied',
+      message: 'You can only delete your own photos',
+    });
+  }
+
+  // Delete file from disk
+  const filePath = path.join(uploadDir, photo.filename);
+  fs.unlink(filePath, (err) => {
+    if (err) {
+      console.error('Failed to delete photo file:', err);
+    }
+  });
+
+  // Delete database record
+  gamePhotos.delete(photo.id);
 
   res.redirect(`/games/${req.params.gameId}`);
 });

@@ -122,6 +122,57 @@ ${(() => {
 
   ${game.notes ? '<div class="p-6 border-t-2 border-pub-wood-medium/50 bg-pub-brown-800/30"><h2 class="text-lg font-pub-heading font-semibold text-pub-chalk-text mb-3 flex items-center gap-2"><span>💬</span> Match Notes</h2><div class="speech-bubble"><p class="text-pub-chalk-text italic">"' + game.notes + '"</p></div></div>' : ''}
 
+  <!-- Photos Section -->
+  <div class="p-6 border-t-2 border-pub-wood-medium/50 bg-pub-brown-800/30">
+    <h2 class="text-lg font-pub-heading font-semibold text-pub-chalk-text mb-4 flex items-center gap-2">
+      <span>📷</span> Photos
+      ${(() => {
+        const pCount = typeof photoCount !== 'undefined' ? photoCount : 0;
+        const pMax = typeof maxPhotos !== 'undefined' ? maxPhotos : 10;
+        return '<span class="text-sm text-pub-chalk-accent font-normal">(' + pCount + '/' + pMax + ')</span>';
+      })()}
+    </h2>
+
+    ${(() => {
+      const photosList = typeof photos !== 'undefined' ? photos : [];
+
+      if (photosList.length === 0) {
+        return '<p class="text-pub-chalk-accent text-sm italic mb-4">No photos yet. Capture the moment!</p>';
+      }
+
+      return '<div class="grid grid-cols-2 md:grid-cols-3 gap-3 mb-4">' + photosList.map(p => {
+        const canDelete = typeof user !== 'undefined' && user && (p.user_id === user.id || user.is_admin);
+        const deleteBtn = canDelete
+          ? '<form action="/games/' + game.id + '/photos/' + p.id + '/delete" method="POST" class="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity" onsubmit="return confirm(&apos;Delete this photo?&apos;)"><button type="submit" class="bg-black/70 hover:bg-neon-pink text-white rounded-full w-7 h-7 flex items-center justify-center transition-colors"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg></button></form>'
+          : '';
+
+        const caption = p.caption
+          ? '<div class="absolute bottom-0 left-0 right-0 bg-black/70 p-2"><p class="text-white text-xs truncate">' + p.caption.replace(/</g, '&lt;').replace(/>/g, '&gt;') + '</p></div>'
+          : '';
+
+        return '<div class="relative group"><a href="/uploads/game-photos/' + p.filename + '" target="_blank" class="block aspect-square overflow-hidden rounded-lg border-2 border-pub-wood-medium hover:border-neon-blue transition-colors"><img src="/uploads/game-photos/' + p.filename + '" alt="Game photo" class="w-full h-full object-cover"></a>' + deleteBtn + caption + '</div>';
+      }).join('') + '</div>';
+    })()}
+
+    ${(() => {
+      if (typeof user === 'undefined' || !user) return '';
+
+      // Check if user is a participant
+      const isParticipant = game.players.some(p => p.user_id === user.id);
+      if (!isParticipant) return '';
+
+      const pCount = typeof photoCount !== 'undefined' ? photoCount : 0;
+      const pMax = typeof maxPhotos !== 'undefined' ? maxPhotos : 10;
+      const remaining = pMax - pCount;
+
+      if (remaining <= 0) {
+        return '<p class="text-pub-chalk-accent text-sm">Photo limit reached for this game.</p>';
+      }
+
+      return '<form action="/games/' + game.id + '/photos" method="POST" enctype="multipart/form-data" class="mt-4 p-4 bg-pub-brown-900/50 rounded-lg border-2 border-pub-wood-medium"><div class="flex flex-col gap-3"><div><label class="block text-pub-chalk-text text-sm font-medium mb-2">Add a photo</label><input type="file" name="photo" accept="image/jpeg,image/png,image/gif,image/webp" required class="block w-full text-sm text-pub-chalk-text file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-medium file:bg-neon-blue file:text-white hover:file:bg-neon-blue/80 file:cursor-pointer cursor-pointer"></div><div><input type="text" name="caption" placeholder="Caption (optional)" maxlength="200" class="w-full bg-pub-brown-900/50 border-2 border-pub-wood-medium rounded-lg p-2 text-pub-chalk-text placeholder-pub-chalk-accent/50 text-sm focus:outline-none focus:border-neon-blue transition-colors"></div><div class="flex items-center justify-between"><span class="text-pub-chalk-accent text-xs">' + remaining + ' photo(s) remaining • Max 5MB</span><button type="submit" class="btn btn-primary btn-sm">Upload</button></div></div></form>';
+    })()}
+  </div>
+
   <!-- Comments Section -->
   <div class="p-6 border-t-2 border-pub-wood-medium/50 bg-pub-brown-800/30">
     <h2 class="text-lg font-pub-heading font-semibold text-pub-chalk-text mb-4 flex items-center gap-2">

@@ -257,6 +257,21 @@ db.exec(`
   CREATE INDEX IF NOT EXISTS idx_game_comments_game_id ON game_comments(game_id);
 `);
 
+// Create game_photos table
+db.exec(`
+  CREATE TABLE IF NOT EXISTS game_photos (
+    id TEXT PRIMARY KEY,
+    game_id TEXT NOT NULL,
+    user_id TEXT NOT NULL,
+    filename TEXT NOT NULL,
+    caption TEXT,
+    created_at TEXT DEFAULT (datetime('now')),
+    FOREIGN KEY (game_id) REFERENCES games(id) ON DELETE CASCADE,
+    FOREIGN KEY (user_id) REFERENCES users(id)
+  );
+  CREATE INDEX IF NOT EXISTS idx_game_photos_game_id ON game_photos(game_id);
+`);
+
 // User queries
 const userQueries = {
   create: db.prepare(`
@@ -674,6 +689,28 @@ const gameCommentQueries = {
   delete: db.prepare('DELETE FROM game_comments WHERE id = ?'),
 };
 
+// Game photo queries
+const gamePhotoQueries = {
+  create: db.prepare(`
+    INSERT INTO game_photos (id, game_id, user_id, filename, caption)
+    VALUES (?, ?, ?, ?, ?)
+  `),
+
+  findByGameId: db.prepare(`
+    SELECT gp.*, u.name, u.avatar_url
+    FROM game_photos gp
+    JOIN users u ON gp.user_id = u.id
+    WHERE gp.game_id = ?
+    ORDER BY gp.created_at ASC
+  `),
+
+  findById: db.prepare('SELECT * FROM game_photos WHERE id = ?'),
+
+  countByGameId: db.prepare('SELECT COUNT(*) as count FROM game_photos WHERE game_id = ?'),
+
+  delete: db.prepare('DELETE FROM game_photos WHERE id = ?'),
+};
+
 // Helper functions
 const users = {
   create(name, isAdmin = false) {
@@ -1022,6 +1059,19 @@ const gameComments = {
   delete: (id) => gameCommentQueries.delete.run(id),
 };
 
+// Game photos helper
+const gamePhotos = {
+  create(gameId, userId, filename, caption) {
+    const id = uuidv4();
+    gamePhotoQueries.create.run(id, gameId, userId, filename, caption || null);
+    return { id, game_id: gameId, user_id: userId, filename, caption };
+  },
+  findByGameId: (gameId) => gamePhotoQueries.findByGameId.all(gameId),
+  findById: (id) => gamePhotoQueries.findById.get(id),
+  countByGameId: (gameId) => gamePhotoQueries.countByGameId.get(gameId).count,
+  delete: (id) => gamePhotoQueries.delete.run(id),
+};
+
 // Bootstrap setup token for first admin
 function getOrCreateSetupToken() {
   if (users.count() > 0) return null;
@@ -1071,6 +1121,7 @@ module.exports = {
   gameDeletions,
   liveGames,
   gameComments,
+  gamePhotos,
   getOrCreateSetupToken,
   countUserAuthMethods,
 };
