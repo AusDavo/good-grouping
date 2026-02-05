@@ -12,6 +12,7 @@
   const gameId = container.dataset.gameId;
   const gameType = container.dataset.gameType;
   const customWsUrl = container.dataset.wsUrl;
+  const playerCount = parseInt(container.dataset.playerCount) || 2;
 
   let ws = null;
   let reconnectAttempts = 0;
@@ -24,7 +25,6 @@
   const connectionStatus = document.getElementById('connection-status');
   const connectionStatusText = document.getElementById('connection-status-text');
   const currentPlayerName = document.getElementById('current-player-name');
-  const recentThrows = document.getElementById('recent-throws');
   const undoBtn = document.getElementById('undo-btn');
 
   // Initialize
@@ -153,6 +153,9 @@
     // Update dart indicators
     updateDartIndicators(gameState.current_dart);
 
+    // Render current volley
+    renderCurrentVolley();
+
     // Update scoreboard based on game type
     switch (gameType) {
       case 'Cricket':
@@ -166,9 +169,6 @@
         renderAtwScores();
         break;
     }
-
-    // Update recent throws
-    renderRecentThrows();
 
     // Highlight active player
     highlightActivePlayer();
@@ -190,58 +190,151 @@
   }
 
   /**
-   * Render Cricket scores
+   * Render current volley - shows each dart's result for the current player's turn
+   */
+  function renderCurrentVolley() {
+    const volleyEl = document.getElementById('current-volley');
+    if (!volleyEl || !gameState) return;
+
+    const currentPlayer = gameState.players[gameState.current_player_index];
+    if (!currentPlayer) {
+      volleyEl.innerHTML = '';
+      return;
+    }
+
+    // Filter throws for the current player and current turn
+    const volleyThrows = (gameState.throws || []).filter(t =>
+      t.player_id === currentPlayer.id && t.turn_number === gameState.current_turn
+    );
+
+    if (volleyThrows.length === 0) {
+      volleyEl.innerHTML = '';
+      return;
+    }
+
+    volleyEl.innerHTML = volleyThrows.map(t => {
+      let text = 'Miss';
+      let cls = 'miss';
+      if (t.segment) {
+        const prefix = t.multiplier === 3 ? 'T' : t.multiplier === 2 ? 'D' : '';
+        text = prefix + (t.segment === 25 ? 'Bull' : t.segment);
+        cls = 'hit';
+      }
+      if (t.is_bust) {
+        text += ' (Bust)';
+        cls = 'bust';
+      }
+      return `<span class="volley-dart ${cls}">${text}</span>`;
+    }).join('');
+  }
+
+  /**
+   * Render Cricket scores - handles both traditional (2p) and horizontal (3+p) layouts
    */
   function renderCricketScores() {
-    const tbody = document.getElementById('cricket-scores');
-    if (!tbody) return;
-
-    gameState.players.forEach((player, idx) => {
-      const row = tbody.querySelector(`[data-player-id="${player.id}"]`);
-      if (!row) return;
-
-      row.querySelector('.marks-15').innerHTML = renderMarks(player.marks_15);
-      row.querySelector('.marks-16').innerHTML = renderMarks(player.marks_16);
-      row.querySelector('.marks-17').innerHTML = renderMarks(player.marks_17);
-      row.querySelector('.marks-18').innerHTML = renderMarks(player.marks_18);
-      row.querySelector('.marks-19').innerHTML = renderMarks(player.marks_19);
-      row.querySelector('.marks-20').innerHTML = renderMarks(player.marks_20);
-      row.querySelector('.marks-bull').innerHTML = renderMarks(player.marks_bull);
-      row.querySelector('.cricket-points').textContent = player.cricket_points || 0;
-    });
-
-    // Update header strikethrough for closed numbers
+    if (playerCount === 2 && document.getElementById('cricket-board-traditional')) {
+      renderCricketTraditional();
+    } else {
+      renderCricketHorizontal();
+    }
     updateClosedNumbers();
   }
 
   /**
-   * Check if a number is closed (all players have 3+ marks) and update header styling
+   * Traditional 3-column cricket rendering for 2 players
+   */
+  function renderCricketTraditional() {
+    const p1 = gameState.players[0];
+    const p2 = gameState.players[1];
+    if (!p1 || !p2) return;
+
+    const segmentMap = [
+      { key: '20', field: 'marks_20' },
+      { key: '19', field: 'marks_19' },
+      { key: '18', field: 'marks_18' },
+      { key: '17', field: 'marks_17' },
+      { key: '16', field: 'marks_16' },
+      { key: '15', field: 'marks_15' },
+      { key: 'bull', field: 'marks_bull' },
+    ];
+
+    segmentMap.forEach(seg => {
+      const row = document.querySelector(`.cricket-row[data-segment="${seg.key}"]`);
+      if (!row) return;
+      const p1Cell = row.querySelector('.marks-p1');
+      const p2Cell = row.querySelector('.marks-p2');
+      if (p1Cell) p1Cell.innerHTML = renderMarks(p1[seg.field]);
+      if (p2Cell) p2Cell.innerHTML = renderMarks(p2[seg.field]);
+    });
+
+    // Update scores
+    const p1Score = document.querySelector('.cricket-p1-score');
+    const p2Score = document.querySelector('.cricket-p2-score');
+    if (p1Score) p1Score.textContent = (p1.cricket_points || 0) + ' pts';
+    if (p2Score) p2Score.textContent = (p2.cricket_points || 0) + ' pts';
+  }
+
+  /**
+   * Horizontal cricket rendering for 3+ players
+   */
+  function renderCricketHorizontal() {
+    const tbody = document.getElementById('cricket-scores-horizontal');
+    if (!tbody) return;
+
+    gameState.players.forEach((player) => {
+      const row = tbody.querySelector(`[data-player-id="${player.id}"]`);
+      if (!row) return;
+
+      row.querySelector('.marks-20').innerHTML = renderMarks(player.marks_20);
+      row.querySelector('.marks-19').innerHTML = renderMarks(player.marks_19);
+      row.querySelector('.marks-18').innerHTML = renderMarks(player.marks_18);
+      row.querySelector('.marks-17').innerHTML = renderMarks(player.marks_17);
+      row.querySelector('.marks-16').innerHTML = renderMarks(player.marks_16);
+      row.querySelector('.marks-15').innerHTML = renderMarks(player.marks_15);
+      row.querySelector('.marks-bull').innerHTML = renderMarks(player.marks_bull);
+      row.querySelector('.cricket-points').textContent = player.cricket_points || 0;
+    });
+  }
+
+  /**
+   * Check if a number is closed (all players have 3+ marks) and update styling
    */
   function updateClosedNumbers() {
-    const segments = ['15', '16', '17', '18', '19', '20', 'bull'];
+    const segments = ['20', '19', '18', '17', '16', '15', 'bull'];
     const markFields = {
-      '15': 'marks_15',
-      '16': 'marks_16',
-      '17': 'marks_17',
-      '18': 'marks_18',
-      '19': 'marks_19',
       '20': 'marks_20',
+      '19': 'marks_19',
+      '18': 'marks_18',
+      '17': 'marks_17',
+      '16': 'marks_16',
+      '15': 'marks_15',
       'bull': 'marks_bull'
     };
 
     segments.forEach(segment => {
-      const header = document.querySelector(`.cricket-header[data-segment="${segment}"]`);
-      if (!header) return;
-
       const allClosed = gameState.players.every(player => {
         const marks = player[markFields[segment]] || 0;
         return marks >= 3;
       });
 
-      if (allClosed) {
-        header.classList.add('closed');
-      } else {
-        header.classList.remove('closed');
+      // Traditional layout
+      const numberCell = document.querySelector(`.cricket-row[data-segment="${segment}"] .cricket-number`);
+      if (numberCell) {
+        if (allClosed) {
+          numberCell.classList.add('closed');
+        } else {
+          numberCell.classList.remove('closed');
+        }
+      }
+
+      // Horizontal layout
+      const header = document.querySelector(`.cricket-header[data-segment="${segment}"]`);
+      if (header) {
+        if (allClosed) {
+          header.classList.add('closed');
+        } else {
+          header.classList.remove('closed');
+        }
       }
     });
   }
@@ -251,10 +344,10 @@
    */
   function renderMarks(count) {
     count = count || 0;
-    if (count === 0) return '<span class="text-gray-600">---</span>';
-    if (count === 1) return '<span class="text-yellow-500">/</span><span class="text-gray-600">--</span>';
-    if (count === 2) return '<span class="text-yellow-500">//</span><span class="text-gray-600">-</span>';
-    if (count >= 3) return '<span class="text-green-500">X</span>' + (count > 3 ? '<span class="text-pink-400">+' + (count - 3) + '</span>' : '');
+    if (count === 0) return '<span class="text-gray-600">-</span>';
+    if (count === 1) return '<span class="text-yellow-500">/</span>';
+    if (count === 2) return '<span class="text-yellow-500">X</span>';
+    if (count >= 3) return '<span class="cricket-closed-mark">X</span>';
     return '';
   }
 
@@ -309,42 +402,28 @@
   }
 
   /**
-   * Render recent throws
-   */
-  function renderRecentThrows() {
-    if (!recentThrows || !gameState.throws) return;
-
-    const recent = gameState.throws.slice(-10);
-    if (recent.length === 0) {
-      recentThrows.innerHTML = '<span class="text-gray-500 text-sm">No throws yet</span>';
-      return;
-    }
-
-    recentThrows.innerHTML = recent.map(t => {
-      const classes = t.is_bust ? 'bg-red-900 text-red-300' : 'bg-gray-700 text-gray-200';
-      let text = 'Miss';
-      if (t.segment) {
-        const prefix = t.multiplier === 3 ? 'T' : t.multiplier === 2 ? 'D' : '';
-        text = prefix + (t.segment === 25 ? 'Bull' : t.segment);
-      }
-      if (t.is_bust) text += ' (Bust)';
-      return `<span class="px-2 py-1 rounded text-xs ${classes}">${text}</span>`;
-    }).join('');
-  }
-
-  /**
    * Highlight active player
    */
   function highlightActivePlayer() {
-    // Remove active class from all
+    // Horizontal layout rows
     document.querySelectorAll('.player-row, .player-score-card, .player-atw-card').forEach(el => {
       el.classList.remove('active');
     });
-
-    // Add active class to current player
     const activeEl = document.querySelector(`[data-player-index="${gameState.current_player_index}"]`);
-    if (activeEl) {
+    if (activeEl && (activeEl.classList.contains('player-row') ||
+        activeEl.classList.contains('player-score-card') ||
+        activeEl.classList.contains('player-atw-card'))) {
       activeEl.classList.add('active');
+    }
+
+    // Traditional cricket layout - highlight active player header
+    const p1Header = document.querySelector('.cricket-p1-header');
+    const p2Header = document.querySelector('.cricket-p2-header');
+    if (p1Header) {
+      p1Header.classList.toggle('active-player', gameState.current_player_index === 0);
+    }
+    if (p2Header) {
+      p2Header.classList.toggle('active-player', gameState.current_player_index === 1);
     }
   }
 

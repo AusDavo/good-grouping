@@ -1,10 +1,10 @@
 <%
-function renderMarks(count) {
+function renderMarksChalk(count) {
   count = count || 0;
-  if (count === 0) return '<span class="text-gray-600">---</span>';
-  if (count === 1) return '<span class="text-yellow-500">/</span><span class="text-gray-600">--</span>';
-  if (count === 2) return '<span class="text-yellow-500">//</span><span class="text-gray-600">-</span>';
-  if (count >= 3) return '<span class="text-green-500">X</span>' + (count > 3 ? '<span class="text-neon-pink">+' + (count - 3) + '</span>' : '');
+  if (count === 0) return '<span class="text-gray-600">-</span>';
+  if (count === 1) return '<span class="text-yellow-500">/</span>';
+  if (count === 2) return '<span class="text-yellow-500">X</span>';
+  if (count >= 3) return '<span class="cricket-closed-mark">X</span>';
   return '';
 }
 %>
@@ -32,7 +32,7 @@ function renderMarks(count) {
   </nav>
 
   <main class="flex-1 max-w-4xl mx-auto w-full px-4 py-4">
-    <div class="space-y-4" id="live-game-container" data-game-id="<%= game.id %>" data-game-type="<%= game.game_type %>" data-ws-url="<%= wsUrl %>">
+    <div class="space-y-4" id="live-game-container" data-game-id="<%= game.id %>" data-game-type="<%= game.game_type %>" data-ws-url="<%= wsUrl %>" data-player-count="<%= game.players.length %>">
 
       <!-- Header -->
       <div class="flex justify-between items-center">
@@ -44,7 +44,7 @@ function renderMarks(count) {
         <% } %>
       </div>
 
-      <!-- Turn Indicator -->
+      <!-- Turn Indicator with Volley Display -->
       <div id="turn-indicator" class="card rounded-lg p-3 text-center">
         <div class="text-sm text-pub-chalk-accent">Current Turn</div>
         <div class="text-lg font-pub-heading text-neon-blue" id="current-player-name"><%= currentPlayer.name %></div>
@@ -53,44 +53,86 @@ function renderMarks(count) {
           <span class="dart-indicator <%= game.current_dart >= 2 ? (game.current_dart === 2 ? 'current' : 'thrown') : '' %>" data-dart="2"></span>
           <span class="dart-indicator <%= game.current_dart === 3 ? 'current' : '' %>" data-dart="3"></span>
         </div>
+        <div id="current-volley" class="flex justify-center gap-3 mt-2 text-sm min-h-[1.5rem]">
+          <!-- Populated by JS -->
+        </div>
       </div>
 
       <!-- Scoreboard -->
       <div id="scoreboard" class="card rounded-xl p-4">
         <% if (game.game_type === 'Cricket') { %>
-          <!-- Cricket Scoreboard -->
-          <div class="overflow-x-auto">
-            <table class="w-full text-sm">
-              <thead>
-                <tr class="text-pub-chalk-accent">
-                  <th class="text-left p-2">Player</th>
-                  <th class="p-2 cricket-header" data-segment="15">15</th>
-                  <th class="p-2 cricket-header" data-segment="16">16</th>
-                  <th class="p-2 cricket-header" data-segment="17">17</th>
-                  <th class="p-2 cricket-header" data-segment="18">18</th>
-                  <th class="p-2 cricket-header" data-segment="19">19</th>
-                  <th class="p-2 cricket-header" data-segment="20">20</th>
-                  <th class="p-2 cricket-header" data-segment="bull">B</th>
-                  <th class="p-2 text-right">Pts</th>
-                </tr>
-              </thead>
-              <tbody id="cricket-scores">
-                <% game.players.forEach((player, idx) => { %>
-                  <tr class="player-row <%= idx === game.current_player_index ? 'active' : '' %>" data-player-id="<%= player.id %>" data-player-index="<%= idx %>">
-                    <td class="p-2 font-pub-heading text-aged-cream player-name"><%= player.name %></td>
-                    <td class="p-2 text-center marks-15"><%- renderMarks(player.marks_15) %></td>
-                    <td class="p-2 text-center marks-16"><%- renderMarks(player.marks_16) %></td>
-                    <td class="p-2 text-center marks-17"><%- renderMarks(player.marks_17) %></td>
-                    <td class="p-2 text-center marks-18"><%- renderMarks(player.marks_18) %></td>
-                    <td class="p-2 text-center marks-19"><%- renderMarks(player.marks_19) %></td>
-                    <td class="p-2 text-center marks-20"><%- renderMarks(player.marks_20) %></td>
-                    <td class="p-2 text-center marks-bull"><%- renderMarks(player.marks_bull) %></td>
-                    <td class="p-2 text-right font-bold text-neon-green cricket-points"><%= player.cricket_points || 0 %></td>
+          <% if (game.players.length === 2) { %>
+            <!-- Traditional 3-column Cricket Scoreboard (2 players) -->
+            <div id="cricket-board-traditional">
+              <table class="w-full text-sm cricket-traditional">
+                <thead>
+                  <tr>
+                    <th class="p-2 text-left font-pub-heading text-aged-cream cricket-p1-header" data-player-index="0">
+                      <div><%= game.players[0].name %></div>
+                      <div class="text-neon-green text-xs font-bold cricket-p1-score"><%= game.players[0].cricket_points || 0 %> pts</div>
+                    </th>
+                    <th class="p-2 text-center text-pub-chalk-accent w-16"></th>
+                    <th class="p-2 text-right font-pub-heading text-aged-cream cricket-p2-header" data-player-index="1">
+                      <div><%= game.players[1].name %></div>
+                      <div class="text-neon-green text-xs font-bold cricket-p2-score"><%= game.players[1].cricket_points || 0 %> pts</div>
+                    </th>
                   </tr>
-                <% }) %>
-              </tbody>
-            </table>
-          </div>
+                </thead>
+                <tbody id="cricket-scores">
+                  <% const segments = [
+                    { key: '20', label: '20', field: 'marks_20' },
+                    { key: '19', label: '19', field: 'marks_19' },
+                    { key: '18', label: '18', field: 'marks_18' },
+                    { key: '17', label: '17', field: 'marks_17' },
+                    { key: '16', label: '16', field: 'marks_16' },
+                    { key: '15', label: '15', field: 'marks_15' },
+                    { key: 'bull', label: 'B', field: 'marks_bull' },
+                  ]; %>
+                  <% segments.forEach(seg => { %>
+                    <tr class="cricket-row" data-segment="<%= seg.key %>">
+                      <td class="p-2 text-center marks-p1" data-player-index="0"><%- renderMarksChalk(game.players[0][seg.field]) %></td>
+                      <td class="p-2 text-center font-pub-heading text-pub-chalk-accent cricket-number"><%= seg.label %></td>
+                      <td class="p-2 text-center marks-p2" data-player-index="1"><%- renderMarksChalk(game.players[1][seg.field]) %></td>
+                    </tr>
+                  <% }) %>
+                </tbody>
+              </table>
+            </div>
+          <% } else { %>
+            <!-- Horizontal Cricket Scoreboard (3+ players fallback) -->
+            <div class="overflow-x-auto" id="cricket-board-horizontal">
+              <table class="w-full text-sm">
+                <thead>
+                  <tr class="text-pub-chalk-accent">
+                    <th class="text-left p-2">Player</th>
+                    <th class="p-2 cricket-header" data-segment="20">20</th>
+                    <th class="p-2 cricket-header" data-segment="19">19</th>
+                    <th class="p-2 cricket-header" data-segment="18">18</th>
+                    <th class="p-2 cricket-header" data-segment="17">17</th>
+                    <th class="p-2 cricket-header" data-segment="16">16</th>
+                    <th class="p-2 cricket-header" data-segment="15">15</th>
+                    <th class="p-2 cricket-header" data-segment="bull">B</th>
+                    <th class="p-2 text-right">Pts</th>
+                  </tr>
+                </thead>
+                <tbody id="cricket-scores-horizontal">
+                  <% game.players.forEach((player, idx) => { %>
+                    <tr class="player-row <%= idx === game.current_player_index ? 'active' : '' %>" data-player-id="<%= player.id %>" data-player-index="<%= idx %>">
+                      <td class="p-2 font-pub-heading text-aged-cream player-name"><%= player.name %></td>
+                      <td class="p-2 text-center marks-20"><%- renderMarksChalk(player.marks_20) %></td>
+                      <td class="p-2 text-center marks-19"><%- renderMarksChalk(player.marks_19) %></td>
+                      <td class="p-2 text-center marks-18"><%- renderMarksChalk(player.marks_18) %></td>
+                      <td class="p-2 text-center marks-17"><%- renderMarksChalk(player.marks_17) %></td>
+                      <td class="p-2 text-center marks-16"><%- renderMarksChalk(player.marks_16) %></td>
+                      <td class="p-2 text-center marks-15"><%- renderMarksChalk(player.marks_15) %></td>
+                      <td class="p-2 text-center marks-bull"><%- renderMarksChalk(player.marks_bull) %></td>
+                      <td class="p-2 text-right font-bold text-neon-green cricket-points"><%= player.cricket_points || 0 %></td>
+                    </tr>
+                  <% }) %>
+                </tbody>
+              </table>
+            </div>
+          <% } %>
         <% } else if (game.game_type === '301' || game.game_type === '501') { %>
           <!-- 01 Scoreboard -->
           <div class="grid gap-4" id="score-01-container">
@@ -140,12 +182,12 @@ function renderMarks(count) {
             <button class="multiplier-btn px-4 py-2 rounded bg-pub-wood-dark text-pub-chalk-accent" data-multiplier="3">Triple</button>
           </div>
           <div class="grid grid-cols-4 gap-2">
-            <button class="segment-btn p-3 rounded bg-pub-green-700 text-neon-green font-bold hover:bg-pub-green-600" data-segment="15">15</button>
-            <button class="segment-btn p-3 rounded bg-pub-green-700 text-neon-green font-bold hover:bg-pub-green-600" data-segment="16">16</button>
-            <button class="segment-btn p-3 rounded bg-pub-green-700 text-neon-green font-bold hover:bg-pub-green-600" data-segment="17">17</button>
-            <button class="segment-btn p-3 rounded bg-pub-green-700 text-neon-green font-bold hover:bg-pub-green-600" data-segment="18">18</button>
-            <button class="segment-btn p-3 rounded bg-pub-green-700 text-neon-green font-bold hover:bg-pub-green-600" data-segment="19">19</button>
             <button class="segment-btn p-3 rounded bg-pub-green-700 text-neon-green font-bold hover:bg-pub-green-600" data-segment="20">20</button>
+            <button class="segment-btn p-3 rounded bg-pub-green-700 text-neon-green font-bold hover:bg-pub-green-600" data-segment="19">19</button>
+            <button class="segment-btn p-3 rounded bg-pub-green-700 text-neon-green font-bold hover:bg-pub-green-600" data-segment="18">18</button>
+            <button class="segment-btn p-3 rounded bg-pub-green-700 text-neon-green font-bold hover:bg-pub-green-600" data-segment="17">17</button>
+            <button class="segment-btn p-3 rounded bg-pub-green-700 text-neon-green font-bold hover:bg-pub-green-600" data-segment="16">16</button>
+            <button class="segment-btn p-3 rounded bg-pub-green-700 text-neon-green font-bold hover:bg-pub-green-600" data-segment="15">15</button>
             <button class="segment-btn p-3 rounded bg-red-700 text-red-200 font-bold hover:bg-red-600" data-segment="25">Bull</button>
             <button class="segment-btn p-3 rounded bg-gray-700 text-gray-300 hover:bg-gray-600" data-segment="0">Miss</button>
           </div>
@@ -183,23 +225,6 @@ function renderMarks(count) {
           <button id="undo-btn" class="px-6 py-2 rounded bg-neon-orange/20 text-neon-orange border border-neon-orange hover:bg-neon-orange hover:text-black transition-colors">
             Undo Last Throw
           </button>
-        </div>
-      </div>
-
-      <!-- Recent Throws -->
-      <div class="card rounded-xl p-4">
-        <h3 class="text-sm font-pub-heading text-pub-chalk-accent mb-2">Recent Throws</h3>
-        <div id="recent-throws" class="flex flex-wrap gap-2">
-          <% if (game.throws && game.throws.length > 0) { %>
-            <% game.throws.slice(-10).forEach(t => { %>
-              <span class="px-2 py-1 rounded text-xs <%= t.is_bust ? 'bg-red-900 text-red-300' : 'bg-pub-wood-medium text-aged-cream' %>">
-                <%= t.segment ? (t.multiplier > 1 ? (t.multiplier === 3 ? 'T' : 'D') : '') + (t.segment === 25 ? 'Bull' : t.segment) : 'Miss' %>
-                <%= t.is_bust ? '(Bust)' : '' %>
-              </span>
-            <% }) %>
-          <% } else { %>
-            <span class="text-pub-chalk-accent text-sm">No throws yet</span>
-          <% } %>
         </div>
       </div>
 
@@ -248,6 +273,50 @@ function renderMarks(count) {
     .cricket-header.closed {
       text-decoration: line-through;
       opacity: 0.5;
+    }
+    /* Traditional 3-column cricket styles */
+    .cricket-traditional td {
+      border-bottom: 1px solid rgba(139, 119, 101, 0.3);
+    }
+    .cricket-traditional .cricket-number {
+      font-size: 1.1rem;
+    }
+    .cricket-number.closed {
+      text-decoration: line-through;
+      opacity: 0.5;
+    }
+    .cricket-closed-mark {
+      color: #10b981;
+      position: relative;
+      display: inline-block;
+    }
+    .cricket-closed-mark::after {
+      content: '';
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      width: 1.3em;
+      height: 1.3em;
+      border: 2px solid #10b981;
+      border-radius: 50%;
+    }
+    .cricket-p1-header.active-player,
+    .cricket-p2-header.active-player {
+      color: #60a5fa;
+      text-shadow: 0 0 8px rgba(59, 130, 246, 0.5);
+    }
+    .volley-dart {
+      font-weight: bold;
+    }
+    .volley-dart.hit {
+      color: #10b981;
+    }
+    .volley-dart.miss {
+      color: #6b7280;
+    }
+    .volley-dart.bust {
+      color: #ef4444;
     }
   </style>
 

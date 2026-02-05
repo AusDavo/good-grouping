@@ -1,5 +1,5 @@
 const express = require('express');
-const { liveGames, users, games, notifications, crowns } = require('../db');
+const { liveGames, liveGameSeries, users, games, notifications, crowns } = require('../db');
 const { requireAuth } = require('../middleware/auth');
 
 const router = express.Router();
@@ -31,7 +31,7 @@ router.get('/new', (req, res) => {
 // Create new live game
 router.post('/', (req, res) => {
   try {
-    const { gameType, startingScore, playerIds } = req.body;
+    const { gameType, startingScore, playerIds, seriesLength } = req.body;
 
     // Validate players
     const playerList = Array.isArray(playerIds) ? playerIds : [playerIds].filter(Boolean);
@@ -62,8 +62,15 @@ router.post('/', (req, res) => {
     if (gameType === '501') score = 501;
     if (startingScore) score = parseInt(startingScore, 10);
 
+    // Handle series creation
+    let seriesId = null;
+    const parsedSeriesLength = parseInt(seriesLength, 10) || 1;
+    if (parsedSeriesLength > 1) {
+      seriesId = liveGameSeries.create(parsedSeriesLength, gameType, req.user.id, playerList);
+    }
+
     // Create the live game
-    const gameId = liveGames.create(gameType, score, req.user.id, playerList);
+    const gameId = liveGames.create(gameType, score, req.user.id, playerList, seriesId);
 
     res.redirect(`/live-games/${gameId}/lobby`);
   } catch (error) {
@@ -107,6 +114,39 @@ router.get('/:id/lobby', (req, res) => {
     isCreator,
     isPlayer,
   });
+});
+
+// Reorder players (creator only, waiting status only)
+router.post('/:id/reorder', (req, res) => {
+  const game = liveGames.findById(req.params.id);
+
+  if (!game) {
+    return res.status(404).render('error', {
+      title: 'Not Found',
+      message: 'Game not found',
+    });
+  }
+
+  if (game.created_by !== req.user.id) {
+    return res.status(403).render('error', {
+      title: 'Access Denied',
+      message: 'Only the game creator can reorder players',
+    });
+  }
+
+  if (game.status !== 'waiting') {
+    return res.status(400).render('error', {
+      title: 'Error',
+      message: 'Can only reorder players before the game starts',
+    });
+  }
+
+  const { playerIdA, playerIdB } = req.body;
+  if (playerIdA && playerIdB) {
+    liveGames.swapPlayerOrder(playerIdA, playerIdB);
+  }
+
+  res.redirect(`/live-games/${req.params.id}/lobby`);
 });
 
 // Start the game (creator only)
@@ -203,6 +243,7 @@ router.get('/:id/state', (req, res) => {
     })),
     throws: game.throws,
     winner_player_id: game.winner_player_id,
+    series_id: game.series_id || null,
   });
 });
 
@@ -225,11 +266,26 @@ router.get('/:id', (req, res) => {
 
   const isPlayer = game.players.some(p => p.user_id === req.user.id);
 
+  // Load series data if applicable
+  let series = null;
+  let seriesDecided = false;
+  let seriesWinner = null;
+  if (game.series_id) {
+    series = liveGameSeries.findById(game.series_id);
+    if (series) {
+      seriesWinner = liveGameSeries.checkSeriesDecided(series);
+      seriesDecided = !!seriesWinner;
+    }
+  }
+
   res.render('live-games/show', {
     title: `${game.game_type} - Summary`,
     game,
     winner,
     isPlayer,
+    series,
+    seriesDecided,
+    seriesWinner,
   });
 });
 
@@ -280,16 +336,35 @@ router.post('/:id/finalize', (req, res) => {
       playerData
     );
 
-    // Process crown transfer if there's a winner
-    if (winner) {
+    // Crown awarding: only if this is NOT part of a series, or if the series is decided
+    let shouldAwardCrown = true;
+    let crownWinnerUserId = winner ? winner.user_id : null;
+
+    if (game.series_id) {
+      // Part of a series - only award crown when series is decided
+      const series = liveGameSeries.findById(game.series_id);
+      if (series) {
+        const seriesWinner = liveGameSeries.checkSeriesDecided(series);
+        if (seriesWinner) {
+          // Series is decided - award crown to series winner
+          crownWinnerUserId = seriesWinner.user_id;
+        } else {
+          // Series still in progress - don't award crown yet
+          shouldAwardCrown = false;
+        }
+      }
+    }
+
+    // Process crown transfer if appropriate
+    if (shouldAwardCrown && crownWinnerUserId) {
       const playerIds = playerData.map(p => p.userId);
-      const crownResult = crowns.processGameResult(game.game_type, winner.user_id, regularGameId, playerIds);
+      const crownResult = crowns.processGameResult(game.game_type, crownWinnerUserId, regularGameId, playerIds);
 
       if (crownResult.awarded) {
-        const winnerUser = users.findById(winner.user_id);
+        const winnerUser = users.findById(crownWinnerUserId);
         if (crownResult.previousHolder) {
           notifications.create(
-            winner.user_id,
+            crownWinnerUserId,
             'crown_won',
             regularGameId,
             `You claimed the ${game.game_type} crown from ${crownResult.previousHolder.name}!`
@@ -302,7 +377,7 @@ router.post('/:id/finalize', (req, res) => {
           );
         } else {
           notifications.create(
-            winner.user_id,
+            crownWinnerUserId,
             'crown_won',
             regularGameId,
             `You are the first to claim the ${game.game_type} crown!`
@@ -322,6 +397,100 @@ router.post('/:id/finalize', (req, res) => {
       message: 'Failed to finalize game',
     });
   }
+});
+
+// Create next game in series
+router.post('/:id/next-in-series', (req, res) => {
+  const game = liveGames.findById(req.params.id);
+
+  if (!game) {
+    return res.status(404).render('error', {
+      title: 'Not Found',
+      message: 'Game not found',
+    });
+  }
+
+  if (!game.series_id) {
+    return res.status(400).render('error', {
+      title: 'Error',
+      message: 'This game is not part of a series',
+    });
+  }
+
+  const series = liveGameSeries.findById(game.series_id);
+  if (!series) {
+    return res.status(404).render('error', {
+      title: 'Not Found',
+      message: 'Series not found',
+    });
+  }
+
+  // Check series is not already decided
+  const seriesWinner = liveGameSeries.checkSeriesDecided(series);
+  if (seriesWinner) {
+    return res.status(400).render('error', {
+      title: 'Error',
+      message: 'Series is already decided',
+    });
+  }
+
+  // Parse starting score for 01 games
+  let score = null;
+  if (game.game_type === '301') score = 301;
+  if (game.game_type === '501') score = 501;
+  if (game.starting_score) score = game.starting_score;
+
+  // Get player user IDs from series
+  const playerUserIds = series.players.map(p => p.user_id);
+
+  // Create next game in series
+  const nextGameId = liveGames.create(game.game_type, score, req.user.id, playerUserIds, game.series_id);
+
+  res.redirect(`/live-games/${nextGameId}/lobby`);
+});
+
+// Extend series (+2 games)
+router.post('/:id/extend-series', (req, res) => {
+  const game = liveGames.findById(req.params.id);
+
+  if (!game) {
+    return res.status(404).render('error', {
+      title: 'Not Found',
+      message: 'Game not found',
+    });
+  }
+
+  if (!game.series_id) {
+    return res.status(400).render('error', {
+      title: 'Error',
+      message: 'This game is not part of a series',
+    });
+  }
+
+  const series = liveGameSeries.findById(game.series_id);
+  if (!series) {
+    return res.status(404).render('error', {
+      title: 'Not Found',
+      message: 'Series not found',
+    });
+  }
+
+  // Extend by 2 games and reactivate
+  liveGameSeries.extendSeries(game.series_id, 2);
+
+  // Parse starting score for 01 games
+  let score = null;
+  if (game.game_type === '301') score = 301;
+  if (game.game_type === '501') score = 501;
+  if (game.starting_score) score = game.starting_score;
+
+  // Get player user IDs from series
+  const playerUserIds = series.players.map(p => p.user_id);
+
+  // Create next game in extended series
+  const nextGameId = liveGames.create(game.game_type, score, req.user.id, playerUserIds, game.series_id);
+
+  res.redirect(`/live-games/${nextGameId}/lobby`);
 });
 
 // Abandon/delete game

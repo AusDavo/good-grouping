@@ -8,7 +8,7 @@
     <!-- Game Status -->
     <div class="text-center mb-6">
       ${game.status === 'finished' && winner ? `
-        <div class="text-5xl mb-2">🏆</div>
+        <div class="text-5xl mb-2">&#127942;</div>
         <div class="text-2xl font-pub-heading text-neon-green mb-2">${winner.name} Wins!</div>
       ` : game.status === 'waiting' ? `
         <div class="text-xl text-yellow-400">Waiting to Start</div>
@@ -19,6 +19,27 @@
       `}
     </div>
 
+    ${series ? `
+      <!-- Series Standings -->
+      <div class="mb-6 p-4 rounded-lg bg-pub-wood-dark/50 border border-pub-wood-medium">
+        <h2 class="text-sm font-pub-heading text-neon-yellow mb-3">
+          Series - Best of ${series.series_length}
+          ${seriesDecided ? ' (Decided)' : ''}
+        </h2>
+        <div class="space-y-2">
+          ${series.players.map(sp => `
+            <div class="flex items-center justify-between p-2 rounded ${seriesDecided && seriesWinner && seriesWinner.user_id === sp.user_id ? 'bg-green-900/30 border border-green-500' : ''}">
+              <span class="font-pub-heading text-aged-cream">${sp.name}</span>
+              <span class="text-lg font-bold ${sp.wins > 0 ? 'text-neon-green' : 'text-pub-chalk-accent'}">${sp.wins} ${sp.wins === 1 ? 'win' : 'wins'}</span>
+            </div>
+          `).join('')}
+        </div>
+        <div class="text-xs text-pub-chalk-accent mt-2">
+          Game ${series.games.length} of up to ${series.series_length}
+        </div>
+      </div>
+    ` : ''}
+
     <!-- Final Scores -->
     <div class="mb-6">
       <h2 class="text-sm font-pub-heading text-pub-chalk-accent mb-3">Final Scores</h2>
@@ -28,7 +49,7 @@
             ${player.id === game.winner_player_id ? 'bg-green-900/30 border border-green-500' : 'bg-pub-wood-dark/50'}">
             <div class="flex items-center gap-3">
               ${player.id === game.winner_player_id ? `
-                <span class="text-xl">🏆</span>
+                <span class="text-xl">&#127942;</span>
               ` : `
                 <span class="w-6 h-6 rounded-full bg-pub-wood-medium flex items-center justify-center text-sm text-pub-chalk-accent">
                   ${index + 1}
@@ -76,15 +97,35 @@
         <a href="/live-games/${game.id}/play" class="block w-full btn-neon-green px-6 py-3 rounded-lg font-pub-heading text-center">
           Continue Playing
         </a>
-      ` : game.status === 'finished' && isPlayer ? `
-        <form action="/live-games/${game.id}/finalize" method="POST">
-          <button type="submit" class="w-full btn-neon-blue px-6 py-3 rounded-lg font-pub-heading">
-            Finalize & Track Crown
-          </button>
-        </form>
-        <p class="text-xs text-pub-chalk-accent text-center">
-          Finalizing will record this game officially and update crown standings.
-        </p>
+      ` : game.status === 'finished' ? `
+        ${series && !seriesDecided ? `
+          <!-- Series not decided - Next game button -->
+          <form action="/live-games/${game.id}/next-in-series" method="POST">
+            <button type="submit" class="w-full btn-neon-green px-6 py-3 rounded-lg font-pub-heading">
+              Next Game in Series
+            </button>
+          </form>
+        ` : series && seriesDecided ? `
+          <!-- Series decided -->
+          <div class="text-center p-3 bg-green-900/20 rounded-lg border border-green-700 mb-2">
+            <div class="text-neon-green font-pub-heading">${seriesWinner.name} wins the series!</div>
+          </div>
+          <form action="/live-games/${game.id}/extend-series" method="POST">
+            <button type="submit" class="w-full btn-neon-yellow px-6 py-3 rounded-lg font-pub-heading">
+              Extend Series (+2)
+            </button>
+          </form>
+        ` : ''}
+        ${isPlayer ? `
+          <form action="/live-games/${game.id}/finalize" method="POST">
+            <button type="submit" class="w-full btn-neon-blue px-6 py-3 rounded-lg font-pub-heading">
+              Finalize & Track Crown
+            </button>
+          </form>
+          <p class="text-xs text-pub-chalk-accent text-center">
+            Finalizing will record this game officially${series ? (seriesDecided ? ' and update crown standings' : '. Crown will be awarded when the series is decided') : ' and update crown standings'}.
+          </p>
+        ` : ''}
       ` : ''}
 
       <a href="/live-games" class="block text-center text-pub-chalk-accent hover:text-neon-blue text-sm">

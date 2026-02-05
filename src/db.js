@@ -243,6 +243,38 @@ db.exec(`
   CREATE INDEX IF NOT EXISTS idx_live_game_throws_player ON live_game_throws(player_id);
 `);
 
+// Create live game series tables
+db.exec(`
+  CREATE TABLE IF NOT EXISTS live_game_series (
+    id TEXT PRIMARY KEY,
+    series_length INTEGER NOT NULL DEFAULT 3,
+    game_type TEXT NOT NULL,
+    status TEXT DEFAULT 'active',
+    created_by TEXT NOT NULL,
+    created_at TEXT DEFAULT (datetime('now')),
+    FOREIGN KEY (created_by) REFERENCES users(id)
+  );
+
+  CREATE TABLE IF NOT EXISTS live_game_series_players (
+    id TEXT PRIMARY KEY,
+    series_id TEXT NOT NULL,
+    user_id TEXT NOT NULL,
+    wins INTEGER DEFAULT 0,
+    FOREIGN KEY (series_id) REFERENCES live_game_series(id) ON DELETE CASCADE,
+    FOREIGN KEY (user_id) REFERENCES users(id),
+    UNIQUE(series_id, user_id)
+  );
+
+  CREATE INDEX IF NOT EXISTS idx_live_game_series_status ON live_game_series(status);
+`);
+
+// Migration: Add series_id column to live_games
+try {
+  db.exec('ALTER TABLE live_games ADD COLUMN series_id TEXT REFERENCES live_game_series(id)');
+} catch (e) {
+  // Column already exists, ignore
+}
+
 // Create game_comments table
 db.exec(`
   CREATE TABLE IF NOT EXISTS game_comments (
@@ -562,8 +594,8 @@ const gameDeletionQueries = {
 // Live game queries
 const liveGameQueries = {
   create: db.prepare(`
-    INSERT INTO live_games (id, game_type, status, starting_score, created_by)
-    VALUES (?, ?, 'waiting', ?, ?)
+    INSERT INTO live_games (id, game_type, status, starting_score, created_by, series_id)
+    VALUES (?, ?, 'waiting', ?, ?, ?)
   `),
 
   findById: db.prepare(`
@@ -628,6 +660,10 @@ const liveGamePlayerQueries = {
     SELECT * FROM live_game_players WHERE live_game_id = ? AND user_id = ?
   `),
 
+  updatePlayerOrder: db.prepare(`
+    UPDATE live_game_players SET player_order = ? WHERE id = ?
+  `),
+
   updateCricketMarks: db.prepare(`
     UPDATE live_game_players
     SET marks_15 = ?, marks_16 = ?, marks_17 = ?, marks_18 = ?,
@@ -667,6 +703,63 @@ const liveGameThrowQueries = {
   `),
 
   delete: db.prepare('DELETE FROM live_game_throws WHERE id = ?'),
+};
+
+// Live game series queries
+const liveGameSeriesQueries = {
+  create: db.prepare(`
+    INSERT INTO live_game_series (id, series_length, game_type, status, created_by)
+    VALUES (?, ?, ?, 'active', ?)
+  `),
+
+  findById: db.prepare(`
+    SELECT lgs.*, u.name as created_by_name
+    FROM live_game_series lgs
+    JOIN users u ON lgs.created_by = u.id
+    WHERE lgs.id = ?
+  `),
+
+  updateStatus: db.prepare(`
+    UPDATE live_game_series SET status = ? WHERE id = ?
+  `),
+
+  updateSeriesLength: db.prepare(`
+    UPDATE live_game_series SET series_length = ? WHERE id = ?
+  `),
+};
+
+const liveGameSeriesPlayerQueries = {
+  create: db.prepare(`
+    INSERT INTO live_game_series_players (id, series_id, user_id, wins)
+    VALUES (?, ?, ?, 0)
+  `),
+
+  findBySeriesId: db.prepare(`
+    SELECT lgsp.*, u.name, u.avatar_url
+    FROM live_game_series_players lgsp
+    JOIN users u ON lgsp.user_id = u.id
+    WHERE lgsp.series_id = ?
+    ORDER BY lgsp.wins DESC
+  `),
+
+  incrementWins: db.prepare(`
+    UPDATE live_game_series_players SET wins = wins + 1
+    WHERE series_id = ? AND user_id = ?
+  `),
+
+  findBySeriesAndUser: db.prepare(`
+    SELECT * FROM live_game_series_players WHERE series_id = ? AND user_id = ?
+  `),
+};
+
+const liveGameSeriesGameQueries = {
+  findBySeriesId: db.prepare(`
+    SELECT lg.*, u.name as created_by_name
+    FROM live_games lg
+    JOIN users u ON lg.created_by = u.id
+    WHERE lg.series_id = ?
+    ORDER BY lg.created_at
+  `),
 };
 
 // Game comment queries
@@ -963,11 +1056,11 @@ const gameDeletions = {
 
 // Live games helper
 const liveGames = {
-  create(gameType, startingScore, createdBy, playerUserIds) {
+  create(gameType, startingScore, createdBy, playerUserIds, seriesId = null) {
     const id = uuidv4();
 
     const createLiveGame = db.transaction(() => {
-      liveGameQueries.create.run(id, gameType, startingScore || null, createdBy);
+      liveGameQueries.create.run(id, gameType, startingScore || null, createdBy, seriesId || null);
 
       for (let i = 0; i < playerUserIds.length; i++) {
         const playerId = uuidv4();
@@ -1045,6 +1138,70 @@ const liveGames = {
   updateRemainingScore: (playerId, score) => liveGamePlayerQueries.updateRemainingScore.run(score, playerId),
 
   updateCurrentTarget: (playerId, target) => liveGamePlayerQueries.updateCurrentTarget.run(target, playerId),
+
+  swapPlayerOrder(playerIdA, playerIdB) {
+    const a = liveGamePlayerQueries.findById.get(playerIdA);
+    const b = liveGamePlayerQueries.findById.get(playerIdB);
+    if (!a || !b) return false;
+    const swap = db.transaction(() => {
+      liveGamePlayerQueries.updatePlayerOrder.run(b.player_order, a.id);
+      liveGamePlayerQueries.updatePlayerOrder.run(a.player_order, b.id);
+    });
+    swap();
+    return true;
+  },
+};
+
+// Live game series helper
+const liveGameSeries = {
+  create(seriesLength, gameType, createdBy, playerUserIds) {
+    const id = uuidv4();
+
+    const createSeries = db.transaction(() => {
+      liveGameSeriesQueries.create.run(id, seriesLength, gameType, createdBy);
+
+      for (const userId of playerUserIds) {
+        const playerId = uuidv4();
+        liveGameSeriesPlayerQueries.create.run(playerId, id, userId);
+      }
+
+      return id;
+    });
+
+    return createSeries();
+  },
+
+  findById(id) {
+    const series = liveGameSeriesQueries.findById.get(id);
+    if (series) {
+      series.players = liveGameSeriesPlayerQueries.findBySeriesId.all(id);
+      series.games = liveGameSeriesGameQueries.findBySeriesId.all(id);
+    }
+    return series;
+  },
+
+  incrementWins(seriesId, userId) {
+    return liveGameSeriesPlayerQueries.incrementWins.run(seriesId, userId);
+  },
+
+  checkSeriesDecided(series) {
+    const winsNeeded = Math.ceil(series.series_length / 2);
+    const winner = series.players.find(p => p.wins >= winsNeeded);
+    return winner || null;
+  },
+
+  finish(seriesId) {
+    return liveGameSeriesQueries.updateStatus.run('finished', seriesId);
+  },
+
+  extendSeries(seriesId, additionalGames) {
+    const series = liveGameSeriesQueries.findById.get(seriesId);
+    if (!series) return false;
+    const newLength = series.series_length + additionalGames;
+    liveGameSeriesQueries.updateSeriesLength.run(newLength, seriesId);
+    liveGameSeriesQueries.updateStatus.run('active', seriesId);
+    return true;
+  },
 };
 
 // Game comments helper
@@ -1120,6 +1277,7 @@ module.exports = {
   crowns,
   gameDeletions,
   liveGames,
+  liveGameSeries,
   gameComments,
   gamePhotos,
   getOrCreateSetupToken,

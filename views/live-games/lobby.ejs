@@ -11,6 +11,9 @@
       ${game.starting_score ? `
         <div class="text-pub-chalk-accent">Starting Score: ${game.starting_score}</div>
       ` : ''}
+      ${game.series_id ? `
+        <div class="text-sm text-neon-yellow mt-1">Part of a series</div>
+      ` : ''}
       <div class="text-sm text-pub-chalk-accent mt-2">
         Created by ${game.created_by_name}
       </div>
@@ -18,7 +21,7 @@
 
     <!-- Players List -->
     <div class="mb-6">
-      <h2 class="text-sm font-pub-heading text-pub-chalk-accent mb-3">Players</h2>
+      <h2 class="text-sm font-pub-heading text-pub-chalk-accent mb-3">Player Order</h2>
       <div class="space-y-2">
         ${game.players.map((player, index) => `
           <div class="flex items-center gap-3 p-3 bg-pub-wood-dark/50 rounded-lg">
@@ -28,7 +31,29 @@
             ${player.avatar_url ? `
               <img src="${player.avatar_url}" alt="" class="w-8 h-8 rounded-full object-cover">
             ` : ''}
-            <span class="text-aged-cream font-pub-heading">${player.name}</span>
+            <span class="text-aged-cream font-pub-heading flex-1">${player.name}</span>
+            ${isCreator && game.players.length > 1 ? `
+              <div class="flex flex-col gap-1">
+                ${index > 0 ? `
+                  <form action="/live-games/${game.id}/reorder" method="POST" class="inline">
+                    <input type="hidden" name="playerIdA" value="${player.id}">
+                    <input type="hidden" name="playerIdB" value="${game.players[index - 1].id}">
+                    <button type="submit" class="w-7 h-7 rounded bg-pub-wood-medium text-pub-chalk-accent hover:text-aged-cream hover:bg-pub-wood-light flex items-center justify-center text-xs" title="Move up">
+                      &#9650;
+                    </button>
+                  </form>
+                ` : `<div class="w-7 h-7"></div>`}
+                ${index < game.players.length - 1 ? `
+                  <form action="/live-games/${game.id}/reorder" method="POST" class="inline">
+                    <input type="hidden" name="playerIdA" value="${player.id}">
+                    <input type="hidden" name="playerIdB" value="${game.players[index + 1].id}">
+                    <button type="submit" class="w-7 h-7 rounded bg-pub-wood-medium text-pub-chalk-accent hover:text-aged-cream hover:bg-pub-wood-light flex items-center justify-center text-xs" title="Move down">
+                      &#9660;
+                    </button>
+                  </form>
+                ` : `<div class="w-7 h-7"></div>`}
+              </div>
+            ` : ''}
           </div>
         `).join('')}
       </div>

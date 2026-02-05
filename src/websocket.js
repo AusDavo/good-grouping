@@ -4,7 +4,7 @@
  */
 
 const WebSocket = require('ws');
-const { liveGames } = require('./db');
+const { liveGames, liveGameSeries } = require('./db');
 const {
   processThrow,
   checkGameComplete,
@@ -304,6 +304,34 @@ function handleThrowDart(ws, payload) {
     // Game over
     liveGames.finish(gameId, winner.winnerId);
 
+    // Handle series win tracking
+    let seriesStandings = null;
+    let seriesDecided = false;
+    let seriesWinnerName = null;
+    if (game.series_id) {
+      // Find the winner's user_id
+      const winnerPlayer = game.players.find(p => p.id === winner.winnerId);
+      if (winnerPlayer) {
+        liveGameSeries.incrementWins(game.series_id, winnerPlayer.user_id);
+      }
+
+      // Reload series data to get updated standings
+      const series = liveGameSeries.findById(game.series_id);
+      if (series) {
+        seriesStandings = series.players.map(p => ({
+          name: p.name,
+          wins: p.wins,
+          user_id: p.user_id,
+        }));
+        const decidedWinner = liveGameSeries.checkSeriesDecided(series);
+        if (decidedWinner) {
+          seriesDecided = true;
+          seriesWinnerName = decidedWinner.name;
+          liveGameSeries.finish(game.series_id);
+        }
+      }
+    }
+
     // Broadcast game ended
     broadcastToRoom(gameId, {
       type: 'game_ended',
@@ -311,6 +339,9 @@ function handleThrowDart(ws, payload) {
         winnerId: winner.winnerId,
         winnerUserId: winner.winnerUserId,
         reason: winner.reason,
+        seriesStandings,
+        seriesDecided,
+        seriesWinnerName,
       },
     });
 
@@ -562,6 +593,7 @@ function formatGameState(game) {
     current_turn: game.current_turn,
     created_by: game.created_by,
     winner_player_id: game.winner_player_id,
+    series_id: game.series_id || null,
     players: game.players.map(p => ({
       id: p.id,
       user_id: p.user_id,
