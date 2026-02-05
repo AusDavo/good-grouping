@@ -108,11 +108,23 @@ router.get('/:id/lobby', (req, res) => {
   const isCreator = game.created_by === req.user.id;
   const isPlayer = game.players.some(p => p.user_id === req.user.id);
 
+  // Load series data if applicable
+  let series = null;
+  let gameNumberInSeries = null;
+  if (game.series_id) {
+    series = liveGameSeries.findById(game.series_id);
+    if (series) {
+      gameNumberInSeries = (series.games || []).length;
+    }
+  }
+
   res.render('live-games/lobby', {
     title: `Lobby - ${game.game_type}`,
     game,
     isCreator,
     isPlayer,
+    series,
+    gameNumberInSeries,
   });
 });
 
@@ -200,12 +212,24 @@ router.get('/:id/play', (req, res) => {
   const isPlayer = game.players.some(p => p.user_id === req.user.id);
   const currentPlayer = game.players[game.current_player_index];
 
+  // Load series data if applicable
+  let series = null;
+  let gameNumberInSeries = null;
+  if (game.series_id) {
+    series = liveGameSeries.findById(game.series_id);
+    if (series) {
+      gameNumberInSeries = (series.games || []).length;
+    }
+  }
+
   res.render('live-games/play', {
     title: `${game.game_type} - Live`,
     game,
     isPlayer,
     currentPlayer,
     wsUrl: process.env.WS_URL || '',
+    series,
+    gameNumberInSeries,
   });
 });
 

@@ -39,9 +39,13 @@ function renderMarksChalk(count) {
         <h1 class="text-xl font-pub-heading text-neon-pink" style="text-shadow: 0 0 10px #ff2d95;">
           <%= game.game_type %>
         </h1>
-        <% if (game.starting_score) { %>
-          <span class="text-pub-chalk-accent text-sm">Start: <%= game.starting_score %></span>
-        <% } %>
+        <div class="text-right">
+          <% if (series) { %>
+            <span class="text-neon-yellow text-sm">Game <%= gameNumberInSeries %> of <%= series.series_length %></span>
+          <% } else if (game.starting_score) { %>
+            <span class="text-pub-chalk-accent text-sm">Start: <%= game.starting_score %></span>
+          <% } %>
+        </div>
       </div>
 
       <!-- Turn Indicator with Volley Display -->

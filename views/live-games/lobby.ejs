@@ -11,8 +11,11 @@
       ${game.starting_score ? `
         <div class="text-pub-chalk-accent">Starting Score: ${game.starting_score}</div>
       ` : ''}
-      ${game.series_id ? `
-        <div class="text-sm text-neon-yellow mt-1">Part of a series</div>
+      ${series ? `
+        <div class="text-sm text-neon-yellow mt-1">Game ${gameNumberInSeries} of ${series.series_length}</div>
+        <div class="flex justify-center gap-4 mt-2 text-xs text-pub-chalk-accent">
+          ${series.players.map(sp => `<span>${sp.name}: ${sp.wins} ${sp.wins === 1 ? 'win' : 'wins'}</span>`).join('')}
+        </div>
       ` : ''}
       <div class="text-sm text-pub-chalk-accent mt-2">
         Created by ${game.created_by_name}
