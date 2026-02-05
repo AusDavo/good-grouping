@@ -76,8 +76,28 @@ function processCricketThrow(gameState, playerId, segment, multiplier) {
  * @returns {Object|null} Winner info or null if game continues
  */
 function checkCricketComplete(gameState) {
+  // Check if ALL players have closed all numbers
+  const allPlayersClosed = gameState.players.every(player =>
+    CRICKET_NUMBERS.every(num => {
+      const marks = num === 25 ? player.marks_bull : player[`marks_${num}`];
+      return marks >= 3;
+    })
+  );
+
+  if (allPlayersClosed) {
+    // Everyone closed - highest points wins (or draw/first player if tied)
+    const sorted = [...gameState.players].sort((a, b) =>
+      (b.cricket_points || 0) - (a.cricket_points || 0)
+    );
+    return {
+      winnerId: sorted[0].id,
+      winnerUserId: sorted[0].user_id,
+      reason: 'all_closed'
+    };
+  }
+
+  // Check if any single player closed all AND has strictly more points
   for (const player of gameState.players) {
-    // Player must have closed all numbers (3+ marks each)
     const allClosed = CRICKET_NUMBERS.every(num => {
       const marks = num === 25 ? player.marks_bull : player[`marks_${num}`];
       return marks >= 3;
@@ -85,13 +105,13 @@ function checkCricketComplete(gameState) {
 
     if (!allClosed) continue;
 
-    // Player has closed all - check if they have highest or tied points
+    const playerPoints = player.cricket_points || 0;
     const otherPlayers = gameState.players.filter(p => p.id !== player.id);
-    const hasHighestPoints = otherPlayers.every(p =>
-      (player.cricket_points || 0) >= (p.cricket_points || 0)
+    const hasStrictLead = otherPlayers.every(p =>
+      playerPoints > (p.cricket_points || 0)
     );
 
-    if (hasHighestPoints) {
+    if (hasStrictLead) {
       return {
         winnerId: player.id,
         winnerUserId: player.user_id,

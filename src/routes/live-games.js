@@ -440,8 +440,21 @@ router.post('/:id/next-in-series', (req, res) => {
   if (game.game_type === '501') score = 501;
   if (game.starting_score) score = game.starting_score;
 
-  // Get player user IDs from series
-  const playerUserIds = series.players.map(p => p.user_id);
+  // Mugs away: loser of previous game goes first
+  const winnerPlayer = game.winner_player_id
+    ? game.players.find(p => p.id === game.winner_player_id)
+    : null;
+  const winnerUserId = winnerPlayer ? winnerPlayer.user_id : null;
+  const seriesUserIds = series.players.map(p => p.user_id);
+
+  let playerUserIds;
+  if (winnerUserId) {
+    // Put non-winners first, winner last
+    const losers = seriesUserIds.filter(id => id !== winnerUserId);
+    playerUserIds = [...losers, winnerUserId];
+  } else {
+    playerUserIds = seriesUserIds;
+  }
 
   // Create next game in series
   const nextGameId = liveGames.create(game.game_type, score, req.user.id, playerUserIds, game.series_id);
@@ -484,8 +497,20 @@ router.post('/:id/extend-series', (req, res) => {
   if (game.game_type === '501') score = 501;
   if (game.starting_score) score = game.starting_score;
 
-  // Get player user IDs from series
-  const playerUserIds = series.players.map(p => p.user_id);
+  // Mugs away: loser of previous game goes first
+  const winnerPlayer = game.winner_player_id
+    ? game.players.find(p => p.id === game.winner_player_id)
+    : null;
+  const winnerUserId = winnerPlayer ? winnerPlayer.user_id : null;
+  const seriesUserIds = series.players.map(p => p.user_id);
+
+  let playerUserIds;
+  if (winnerUserId) {
+    const losers = seriesUserIds.filter(id => id !== winnerUserId);
+    playerUserIds = [...losers, winnerUserId];
+  } else {
+    playerUserIds = seriesUserIds;
+  }
 
   // Create next game in extended series
   const nextGameId = liveGames.create(game.game_type, score, req.user.id, playerUserIds, game.series_id);
