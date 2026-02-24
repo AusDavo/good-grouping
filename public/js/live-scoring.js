@@ -301,6 +301,7 @@
    */
   function updateClosedNumbers() {
     const segments = ['20', '19', '18', '17', '16', '15', 'bull'];
+    const numberSegments = ['20', '19', '18', '17', '16', '15'];
     const markFields = {
       '20': 'marks_20',
       '19': 'marks_19',
@@ -311,11 +312,21 @@
       'bull': 'marks_bull'
     };
 
+    let allNumbersClosed = true;
+    let bullClosed = false;
+
     segments.forEach(segment => {
       const allClosed = gameState.players.every(player => {
         const marks = player[markFields[segment]] || 0;
         return marks >= 3;
       });
+
+      // Track for bull run detection
+      if (segment === 'bull') {
+        bullClosed = allClosed;
+      } else if (!allClosed) {
+        allNumbersClosed = false;
+      }
 
       // Traditional layout
       const numberCell = document.querySelector(`.cricket-row[data-segment="${segment}"] .cricket-number`);
@@ -336,7 +347,32 @@
           header.classList.remove('closed');
         }
       }
+
+      // Dead number styling - swap closed marks to dead marks
+      if (allClosed) {
+        // Traditional layout - marks in this row
+        const row = document.querySelector(`.cricket-row[data-segment="${segment}"]`);
+        if (row) {
+          row.querySelectorAll('.cricket-closed-mark').forEach(el => {
+            el.className = 'cricket-dead-mark';
+          });
+        }
+        // Horizontal layout - mark cells for this segment
+        document.querySelectorAll(`.marks-${segment} .cricket-closed-mark`).forEach(el => {
+          el.className = 'cricket-dead-mark';
+        });
+      }
     });
+
+    // Bull Run detection: all numbers 15-20 dead, bull still live
+    const bullRunBanner = document.getElementById('bull-run-banner');
+    if (bullRunBanner) {
+      if (allNumbersClosed && !bullClosed) {
+        bullRunBanner.classList.remove('hidden');
+      } else {
+        bullRunBanner.classList.add('hidden');
+      }
+    }
   }
 
   /**
@@ -509,6 +545,18 @@
     if (undoBtn) {
       undoBtn.addEventListener('click', () => {
         send('undo_throw', { gameId });
+      });
+    }
+
+    // Zip button - fill remaining darts as misses
+    const zipBtn = document.getElementById('zip-btn');
+    if (zipBtn) {
+      zipBtn.addEventListener('click', () => {
+        if (!gameState) return;
+        const remaining = 4 - gameState.current_dart;
+        for (let i = 0; i < remaining; i++) {
+          sendThrow(null, 1);
+        }
       });
     }
   }

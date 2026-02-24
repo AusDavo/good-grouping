@@ -176,6 +176,13 @@ function renderMarksChalk(count) {
         <% } %>
       </div>
 
+      <!-- Bull Run Banner (Cricket only) -->
+      <div id="bull-run-banner" class="bull-run-banner hidden">
+        <span class="bull-run-emoji">🐂</span>
+        <span class="bull-run-text">BULL RUN!</span>
+        <span class="bull-run-emoji">🐂</span>
+      </div>
+
       <!-- Input Controls -->
       <div id="input-controls" class="card rounded-xl p-4 space-y-4">
         <% if (game.game_type === 'Cricket') { %>
@@ -224,10 +231,13 @@ function renderMarksChalk(count) {
           </div>
         <% } %>
 
-        <!-- Undo Button -->
-        <div class="flex justify-center mt-4">
+        <!-- Undo & Zip Buttons -->
+        <div class="flex justify-center gap-3 mt-4">
           <button id="undo-btn" class="px-6 py-2 rounded bg-neon-orange/20 text-neon-orange border border-neon-orange hover:bg-neon-orange hover:text-black transition-colors">
             Undo Last Throw
+          </button>
+          <button id="zip-btn" class="px-6 py-2 rounded bg-gray-700/50 text-gray-400 border border-gray-600 hover:bg-gray-600 hover:text-gray-200 transition-colors">
+            Zip
           </button>
         </div>
       </div>
@@ -322,6 +332,48 @@ function renderMarksChalk(count) {
     .volley-dart.bust {
       color: #ef4444;
     }
+    /* Dead number marks (all players closed) */
+    .cricket-dead-mark {
+      color: #ef4444;
+      position: relative;
+      display: inline-block;
+    }
+    .cricket-dead-mark::after {
+      content: '';
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      width: 1.3em;
+      height: 1.3em;
+      border: 2px solid #ef4444;
+      border-radius: 50%;
+    }
+    /* Bull Run banner */
+    .bull-run-banner {
+      text-align: center;
+      padding: 0.75rem 1rem;
+      border-radius: 0.75rem;
+      background: linear-gradient(135deg, #1a0a2e, #2d1b4e);
+      border: 2px solid #a855f7;
+      box-shadow: 0 0 15px rgba(168, 85, 247, 0.4), 0 0 30px rgba(168, 85, 247, 0.2);
+      animation: bull-run-glow 2s ease-in-out infinite;
+    }
+    .bull-run-text {
+      font-family: 'Press Start 2P', cursive;
+      font-size: 1.25rem;
+      color: #e879f9;
+      text-shadow: 0 0 10px #a855f7, 0 0 20px #7c3aed;
+      margin: 0 0.5rem;
+    }
+    .bull-run-emoji {
+      font-size: 1.5rem;
+    }
+    @keyframes bull-run-glow {
+      0%, 100% { box-shadow: 0 0 15px rgba(168, 85, 247, 0.4), 0 0 30px rgba(168, 85, 247, 0.2); }
+      50% { box-shadow: 0 0 20px rgba(168, 85, 247, 0.6), 0 0 40px rgba(168, 85, 247, 0.3); }
+    }
+    .hidden { display: none; }
   </style>
 
   <script src="/js/live-scoring.js"></script>

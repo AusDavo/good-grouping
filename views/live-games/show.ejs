@@ -117,7 +117,7 @@
           </form>
         ` : ''}
         ${isPlayer ? `
-          <form action="/live-games/${game.id}/finalize" method="POST">
+          <form action="/live-games/${game.id}/finalize" method="POST"${series && !seriesDecided ? ' onsubmit="return confirm(\'Finalizing will end the current series. Are you sure you want to finalize instead of playing the next game?\')"' : ''}>
             <button type="submit" class="w-full btn-neon-blue px-6 py-3 rounded-lg font-pub-heading">
               Finalize & Track Crown
             </button>
