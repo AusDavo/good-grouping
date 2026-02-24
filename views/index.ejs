@@ -21,6 +21,12 @@
   </div>
 </div>
 
+<!-- Active Game Banner -->
+${typeof userActiveGame !== 'undefined' && userActiveGame ? '<a href="/live-games/' + userActiveGame.id + '/play" class="block mb-4 p-3 rounded-lg bg-neon-green/20 border border-neon-green/50 text-center hover:bg-neon-green/30 transition-colors"><span class="text-neon-green font-pub-heading">⚡ You have a live game in progress</span><span class="text-pub-chalk-accent text-sm ml-2">(' + userActiveGame.game_type + ')</span></a>' : ''}
+
+<!-- Pending Confirmations -->
+${typeof unconfirmedCount !== 'undefined' && unconfirmedCount > 0 ? '<div class="mb-4 p-3 rounded-lg bg-neon-yellow/10 border border-neon-yellow/30 text-center"><span class="text-neon-yellow text-sm">⏳ You have ' + unconfirmedCount + ' game' + (unconfirmedCount > 1 ? 's' : '') + ' to confirm</span></div>' : ''}
+
 <!-- Current Crown Holders -->
 ${Object.keys(crownHolders).length > 0 ? '<div class="card p-4 mb-8"><div class="flex items-center gap-2 mb-4"><span class="text-2xl">👑</span><h2 class="text-lg font-pub-heading font-bold text-pub-chalk-text">Crown Holders</h2></div><div class="grid grid-cols-2 sm:grid-cols-4 gap-3">' + Object.entries(crownHolders).map(([gameType, crown]) => {
   const typeIcon = gameType === 'Cricket' ? '🦗' : gameType === '301' || gameType === '501' ? '🎯' : gameType === 'Around the World' ? '🌍' : '🎲';
@@ -29,6 +35,9 @@ ${Object.keys(crownHolders).length > 0 ? '<div class="card p-4 mb-8"><div class=
     : '<div class="w-8 h-8 rounded-full bg-pub-green-700 flex items-center justify-center ring-2 ring-neon-yellow"><span class="text-xs font-bold text-neon-green">' + crown.holder_name.charAt(0).toUpperCase() + '</span></div>';
   return '<a href="/users/' + crown.holder_user_id + '" class="flex items-center gap-2 p-2 rounded-lg bg-pub-brown-700 border border-pub-wood-medium hover:border-neon-yellow/50 transition-colors"><span class="text-lg">' + typeIcon + '</span><div class="flex-1 min-w-0"><div class="text-xs text-pub-chalk-accent">' + gameType + '</div><div class="text-sm font-pub-heading text-neon-yellow truncate">' + crown.holder_name + '</div></div>' + avatar + '</a>';
 }).join('') + '</div></div>' : ''}
+
+<!-- Game Type Filter -->
+${games.length > 0 ? '<div class="flex flex-wrap gap-2 mb-4" id="game-filter"><button class="filter-btn px-3 py-1 rounded-full text-sm font-pub-heading bg-neon-blue/20 text-neon-blue border border-neon-blue/50" data-filter="all" onclick="filterGames(this, &apos;all&apos;)">All</button><button class="filter-btn px-3 py-1 rounded-full text-sm font-pub-heading bg-pub-wood-dark text-pub-chalk-accent border border-pub-wood-medium" data-filter="Cricket" onclick="filterGames(this, &apos;Cricket&apos;)">🦗 Cricket</button><button class="filter-btn px-3 py-1 rounded-full text-sm font-pub-heading bg-pub-wood-dark text-pub-chalk-accent border border-pub-wood-medium" data-filter="301" onclick="filterGames(this, &apos;301&apos;)">🎯 301</button><button class="filter-btn px-3 py-1 rounded-full text-sm font-pub-heading bg-pub-wood-dark text-pub-chalk-accent border border-pub-wood-medium" data-filter="501" onclick="filterGames(this, &apos;501&apos;)">🎯 501</button><button class="filter-btn px-3 py-1 rounded-full text-sm font-pub-heading bg-pub-wood-dark text-pub-chalk-accent border border-pub-wood-medium" data-filter="Around the World" onclick="filterGames(this, &apos;Around the World&apos;)">🌍 AtW</button></div>' : ''}
 
 ${games.length === 0 ? '<div class="card p-12 text-center"><div class="w-20 h-20 bg-pub-wood-medium rounded-full flex items-center justify-center mx-auto mb-6 border-4 border-pub-wood-light"><span class="text-4xl">🎯</span></div><p class="text-pub-chalk-text text-lg font-pub-heading mb-2">No games on the board yet</p><p class="text-pub-chalk-accent">Be the first to chalk up a score!</p></div>' : '<div class="space-y-4">' + games.map(game => {
   const confirmedCount = game.players.filter(p => p.confirmed_at).length;
@@ -105,6 +114,22 @@ ${games.length === 0 ? '<div class="card p-12 text-center"><div class="w-20 h-20
   // Game type icon mapping
   const gameTypeIcon = game.game_type === 'Cricket' ? '🦗' : game.game_type === '301' || game.game_type === '501' ? '🎯' : game.game_type === 'Around the World' ? '🌍' : '🎲';
 
-  return '<div class="card p-5 hover:border-neon-pink/30 hover:shadow-neon-pink-sm transition-all duration-200 group"><div class="flex items-center justify-between mb-4"><span class="inline-flex items-center gap-2 text-neon-blue font-pub-heading font-semibold"><span class="text-lg">' + gameTypeIcon + '</span>' + game.game_type + '</span><span class="text-pub-chalk-accent text-sm">' + new Date(game.played_at).toLocaleDateString() + '</span></div>' + avatarStack + playerDetails + (game.notes ? '<div class="speech-bubble mb-4"><p class="text-pub-chalk-text text-sm italic line-clamp-2">"' + game.notes + '"</p></div>' : '') + '<div class="flex items-center justify-between pt-4 border-t-2 border-pub-wood-medium/50"><div class="flex items-center gap-4 flex-wrap"><span class="text-pub-chalk-accent text-xs">Chalked by ' + game.created_by_name + '</span>' + confirmationStatus + deletionBadge + '</div><a href="/games/' + game.id + '" class="inline-flex items-center gap-1.5 text-sm text-pub-chalk-accent hover:text-neon-pink transition-colors duration-200 font-pub-heading">View details<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" /></svg></a></div></div>';
+  return '<div class="card p-5 hover:border-neon-pink/30 hover:shadow-neon-pink-sm transition-all duration-200 group game-card" data-game-type="' + game.game_type + '"><div class="flex items-center justify-between mb-4"><span class="inline-flex items-center gap-2 text-neon-blue font-pub-heading font-semibold"><span class="text-lg">' + gameTypeIcon + '</span>' + game.game_type + '</span><span class="text-pub-chalk-accent text-sm">' + new Date(game.played_at).toLocaleDateString() + '</span></div>' + avatarStack + playerDetails + (game.notes ? '<div class="speech-bubble mb-4"><p class="text-pub-chalk-text text-sm italic line-clamp-2">"' + game.notes + '"</p></div>' : '') + '<div class="flex items-center justify-between pt-4 border-t-2 border-pub-wood-medium/50"><div class="flex items-center gap-4 flex-wrap"><span class="text-pub-chalk-accent text-xs">Chalked by ' + game.created_by_name + '</span>' + confirmationStatus + deletionBadge + '</div><a href="/games/' + game.id + '" class="inline-flex items-center gap-1.5 text-sm text-pub-chalk-accent hover:text-neon-pink transition-colors duration-200 font-pub-heading">View details<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" /></svg></a></div></div>';
 }).join('') + '</div>'}
+
+<script>
+function filterGames(btn, type) {
+  document.querySelectorAll('.filter-btn').forEach(b => {
+    b.className = 'filter-btn px-3 py-1 rounded-full text-sm font-pub-heading bg-pub-wood-dark text-pub-chalk-accent border border-pub-wood-medium';
+  });
+  btn.className = 'filter-btn px-3 py-1 rounded-full text-sm font-pub-heading bg-neon-blue/20 text-neon-blue border border-neon-blue/50';
+  document.querySelectorAll('.game-card').forEach(card => {
+    if (type === 'all' || card.dataset.gameType === type) {
+      card.style.display = '';
+    } else {
+      card.style.display = 'none';
+    }
+  });
+}
+</script>
 ` }) %>

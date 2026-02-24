@@ -83,10 +83,24 @@ app.get('/', (req, res) => {
     crownHolders[c.game_type] = c;
   });
 
+  // Count games needing confirmation from this user
+  const userGames = games.findByUserId(req.user.id, 20);
+  const unconfirmedGames = userGames.filter(g =>
+    g.players.some(p => p.user_id === req.user.id && !p.confirmed_at)
+  );
+
+  // Check for active live games this user is in
+  const activeGames = liveGames.findActive();
+  const userActiveGame = activeGames.find(g =>
+    g.status === 'playing' && g.players.some(p => p.user_id === req.user.id)
+  );
+
   res.render('index', {
     title: 'Home',
     games: recentGames,
     crownHolders,
+    unconfirmedCount: unconfirmedGames.length,
+    userActiveGame,
   });
 });
 
@@ -97,6 +111,24 @@ app.get('/crowns', (req, res) => {
   }
 
   const allCrowns = crowns.findAll();
+
+  // Calculate defense streak for each crown
+  allCrowns.forEach(crown => {
+    // Count consecutive wins by the holder since they acquired the crown
+    const holderGames = games.findByUserId(crown.holder_user_id, 50);
+    let defenseCount = 0;
+    for (const game of holderGames) {
+      if (game.game_type !== crown.game_type) continue;
+      if (new Date(game.played_at) < new Date(crown.acquired_at)) break;
+      const holderPlayer = game.players.find(p => p.user_id === crown.holder_user_id);
+      if (holderPlayer && holderPlayer.is_winner) {
+        defenseCount++;
+      } else {
+        break;
+      }
+    }
+    crown.defense_count = defenseCount;
+  });
 
   res.render('crowns', {
     title: 'Crowns',

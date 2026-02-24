@@ -20,6 +20,8 @@
   let reconnectDelay = 1000;
   let selectedMultiplier = 1;
   let gameState = null;
+  let previousPlayerIndex = null;
+  let previousVolleyThrows = [];
 
   // DOM Elements
   const connectionStatus = document.getElementById('connection-status');
@@ -134,6 +136,23 @@
    * Handle game state update
    */
   function handleGameState(state) {
+    // Detect turn change for volley toast
+    if (gameState && state.current_player_index !== gameState.current_player_index) {
+      const prevPlayer = gameState.players[gameState.current_player_index];
+      if (prevPlayer) {
+        const volleyThrows = (gameState.throws || []).filter(t =>
+          t.player_id === prevPlayer.id && t.turn_number === gameState.current_turn
+        );
+        if (volleyThrows.length > 0) {
+          const summary = volleyThrows.map(t => {
+            if (!t.segment) return 'Miss';
+            const prefix = t.multiplier === 3 ? 'T' : t.multiplier === 2 ? 'D' : '';
+            return prefix + (t.segment === 25 ? 'Bull' : t.segment);
+          }).join(', ');
+          showToast(prevPlayer.name + ': ' + summary, 'info');
+        }
+      }
+    }
     gameState = state;
     renderGameState();
   }
@@ -148,6 +167,15 @@
     const currentPlayer = gameState.players[gameState.current_player_index];
     if (currentPlayer && currentPlayerName) {
       currentPlayerName.textContent = currentPlayer.name;
+      // Update avatar
+      const avatarEl = document.getElementById('current-player-avatar');
+      if (avatarEl) {
+        if (currentPlayer.avatar_url) {
+          avatarEl.innerHTML = '<img src="' + currentPlayer.avatar_url + '" alt="">';
+        } else {
+          avatarEl.innerHTML = '';
+        }
+      }
     }
 
     // Update dart indicators
@@ -172,6 +200,9 @@
 
     // Highlight active player
     highlightActivePlayer();
+
+    // Update series tracker
+    updateSeriesTracker();
   }
 
   /**
@@ -267,11 +298,27 @@
       if (p2Cell) p2Cell.innerHTML = renderMarks(p2[seg.field]);
     });
 
-    // Update scores
+    // Update scores with animation
     const p1Score = document.querySelector('.cricket-p1-score');
     const p2Score = document.querySelector('.cricket-p2-score');
-    if (p1Score) p1Score.textContent = (p1.cricket_points || 0) + ' pts';
-    if (p2Score) p2Score.textContent = (p2.cricket_points || 0) + ' pts';
+    if (p1Score) {
+      const newText = (p1.cricket_points || 0) + ' pts';
+      if (p1Score.textContent !== newText) {
+        p1Score.textContent = newText;
+        p1Score.classList.remove('score-changed');
+        void p1Score.offsetWidth;
+        p1Score.classList.add('score-changed');
+      }
+    }
+    if (p2Score) {
+      const newText = (p2.cricket_points || 0) + ' pts';
+      if (p2Score.textContent !== newText) {
+        p2Score.textContent = newText;
+        p2Score.classList.remove('score-changed');
+        void p2Score.offsetWidth;
+        p2Score.classList.add('score-changed');
+      }
+    }
   }
 
   /**
@@ -400,7 +447,13 @@
 
       const scoreEl = card.querySelector('.remaining-score');
       if (scoreEl) {
-        scoreEl.textContent = player.remaining_score;
+        const newText = String(player.remaining_score);
+        if (scoreEl.textContent !== newText) {
+          scoreEl.textContent = newText;
+          scoreEl.classList.remove('score-changed');
+          void scoreEl.offsetWidth;
+          scoreEl.classList.add('score-changed');
+        }
       }
     });
   }
@@ -461,6 +514,36 @@
     if (p2Header) {
       p2Header.classList.toggle('active-player', gameState.current_player_index === 1);
     }
+  }
+
+  /**
+   * Update series tracker dots
+   */
+  function updateSeriesTracker() {
+    const tracker = document.getElementById('series-tracker');
+    if (!tracker || !gameState || !gameState.series_id) return;
+
+    // Fetch series info from the data attributes on the page
+    const seriesLengthText = document.querySelector('.text-neon-yellow.text-sm');
+    if (!seriesLengthText) return;
+
+    const match = seriesLengthText.textContent.match(/Game (\d+) of (\d+)/);
+    if (!match) return;
+
+    const currentGame = parseInt(match[1]);
+    const seriesLength = parseInt(match[2]);
+
+    let dots = '';
+    for (let i = 1; i <= seriesLength; i++) {
+      if (i < currentGame) {
+        dots += '<span class="w-3 h-3 rounded-full bg-neon-green" title="Game ' + i + ' (played)"></span>';
+      } else if (i === currentGame) {
+        dots += '<span class="w-3 h-3 rounded-full bg-neon-yellow animate-pulse" title="Game ' + i + ' (current)"></span>';
+      } else {
+        dots += '<span class="w-3 h-3 rounded-full bg-gray-600" title="Game ' + i + '"></span>';
+      }
+    }
+    tracker.innerHTML = dots;
   }
 
   /**
@@ -559,12 +642,75 @@
         }
       });
     }
+
+    // Warn before navigating away during a game
+    window.addEventListener('beforeunload', (e) => {
+      if (gameState && gameState.status === 'playing') {
+        e.preventDefault();
+      }
+    });
+
+    // Keyboard shortcuts for scoring
+    document.addEventListener('keydown', (e) => {
+      if (!gameState || gameState.status !== 'playing') return;
+      // Don't trigger if user is typing in an input
+      if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
+
+      const key = e.key;
+
+      // Number keys for Cricket segments
+      if (gameType === 'Cricket') {
+        const keyMap = { '0': '0', '5': '15', '6': '16', '7': '17', '8': '18', '9': '19', '2': '20' };
+        if (keyMap[key]) {
+          const btn = document.querySelector('.segment-btn[data-segment="' + keyMap[key] + '"]');
+          if (btn) { btn.click(); return; }
+        }
+        if (key === 'b' || key === 'B') {
+          const btn = document.querySelector('.segment-btn[data-segment="25"]');
+          if (btn) { btn.click(); return; }
+        }
+        if (key === 'm' || key === 'M' || key === ' ') {
+          e.preventDefault();
+          const btn = document.querySelector('.segment-btn[data-segment="0"]');
+          if (btn) { btn.click(); return; }
+        }
+      }
+
+      // Multiplier keys
+      if (key === '1') {
+        document.querySelectorAll('.multiplier-btn').forEach(b => b.dataset.active = 'false');
+        const btn = document.querySelector('.multiplier-btn[data-multiplier="1"]');
+        if (btn) { btn.dataset.active = 'true'; selectedMultiplier = 1; }
+      }
+      if (key === 'd' || key === 'D') {
+        document.querySelectorAll('.multiplier-btn').forEach(b => b.dataset.active = 'false');
+        const btn = document.querySelector('.multiplier-btn[data-multiplier="2"]');
+        if (btn) { btn.dataset.active = 'true'; selectedMultiplier = 2; }
+      }
+      if (key === 't' || key === 'T') {
+        document.querySelectorAll('.multiplier-btn').forEach(b => b.dataset.active = 'false');
+        const btn = document.querySelector('.multiplier-btn[data-multiplier="3"]');
+        if (btn) { btn.dataset.active = 'true'; selectedMultiplier = 3; }
+      }
+
+      // Z for zip
+      if (key === 'z' || key === 'Z') {
+        const zipBtn = document.getElementById('zip-btn');
+        if (zipBtn) zipBtn.click();
+      }
+      // U for undo
+      if (key === 'u' || key === 'U') {
+        const undoBtn = document.getElementById('undo-btn');
+        if (undoBtn) undoBtn.click();
+      }
+    });
   }
 
   /**
    * Send throw to server
    */
   function sendThrow(segment, multiplier) {
+    if (navigator.vibrate) navigator.vibrate(50);
     send('throw_dart', {
       gameId,
       segment,

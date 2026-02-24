@@ -126,7 +126,7 @@
   </nav>
 
   <!-- Main Content Area -->
-  <main class="flex-1 max-w-4xl mx-auto w-full px-4 py-8">
+  <main class="flex-1 max-w-4xl mx-auto w-full px-4 py-8 pb-20 sm:pb-8">
     <%- body %>
   </main>
 
@@ -143,8 +143,76 @@
       <p class="text-pub-chalk-accent text-xs font-pub-body">
         Est. 2024 • Your Local Darts Scoreboard
       </p>
+      <button id="theme-toggle" onclick="toggleTheme()" class="mt-2 text-pub-chalk-accent text-xs hover:text-neon-blue transition-colors">
+        ☀️ Light Mode
+      </button>
+      <script>
+        function toggleTheme() {
+          const html = document.documentElement;
+          const btn = document.getElementById('theme-toggle');
+          if (html.classList.contains('light')) {
+            html.classList.remove('light');
+            localStorage.removeItem('theme');
+            btn.textContent = '☀️ Light Mode';
+          } else {
+            html.classList.add('light');
+            localStorage.setItem('theme', 'light');
+            btn.textContent = '🌙 Dark Mode';
+          }
+        }
+        // Restore theme preference
+        if (localStorage.getItem('theme') === 'light') {
+          document.documentElement.classList.add('light');
+          document.addEventListener('DOMContentLoaded', () => {
+            const btn = document.getElementById('theme-toggle');
+            if (btn) btn.textContent = '🌙 Dark Mode';
+          });
+        }
+      </script>
     </div>
   </footer>
+
+  <% if (typeof user !== 'undefined' && user) { %>
+    <!-- Mobile Bottom Navigation -->
+    <nav class="sm:hidden fixed bottom-0 left-0 right-0 bg-pub-wood-dark border-t-2 border-pub-wood-medium z-50 pb-safe">
+      <div class="flex justify-around items-center py-2">
+        <a href="/" class="flex flex-col items-center gap-0.5 text-pub-chalk-accent hover:text-neon-pink transition-colors px-3 py-1">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
+          </svg>
+          <span class="text-[10px]">Home</span>
+        </a>
+        <a href="/live-games" class="flex flex-col items-center gap-0.5 text-pub-chalk-accent hover:text-neon-green transition-colors px-3 py-1 relative">
+          <span class="absolute top-0 right-1 flex h-2 w-2">
+            <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-neon-green opacity-75"></span>
+            <span class="relative inline-flex rounded-full h-2 w-2 bg-neon-green"></span>
+          </span>
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z" />
+          </svg>
+          <span class="text-[10px]">Live</span>
+        </a>
+        <a href="/games/new" class="flex flex-col items-center gap-0.5 text-pub-chalk-accent hover:text-neon-blue transition-colors px-3 py-1">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+          </svg>
+          <span class="text-[10px]">New</span>
+        </a>
+        <a href="/crowns" class="flex flex-col items-center gap-0.5 text-pub-chalk-accent hover:text-neon-yellow transition-colors px-3 py-1">
+          <span class="text-lg">👑</span>
+          <span class="text-[10px]">Crowns</span>
+        </a>
+        <a href="/profile" class="flex flex-col items-center gap-0.5 text-pub-chalk-accent hover:text-neon-pink transition-colors px-3 py-1">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+          </svg>
+          <span class="text-[10px]">Profile</span>
+        </a>
+      </div>
+    </nav>
+    <!-- Spacer for bottom nav -->
+    <div class="sm:hidden h-16"></div>
+  <% } %>
 
   <script src="/js/webauthn.js"></script>
   <script src="/js/notifications.js"></script>

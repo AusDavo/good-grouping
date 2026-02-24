@@ -45,6 +45,29 @@
   </div>
 </div>
 
+<!-- Game Type Breakdown -->
+${Object.keys(stats.gameTypeStats || {}).length > 0 ? '<div class="mb-8"><h2 class="text-lg font-pub-heading font-semibold text-pub-chalk-text mb-4 flex items-center gap-2"><span class="text-neon-blue">📊</span> Win Rates</h2><div class="grid grid-cols-2 sm:grid-cols-4 gap-3">' + Object.entries(stats.gameTypeStats).map(([type, s]) => {
+  const pct = s.played > 0 ? Math.round((s.wins / s.played) * 100) : 0;
+  const icon = type === 'Cricket' ? '🦗' : type === '301' || type === '501' ? '🎯' : type === 'Around the World' ? '🌍' : '🎲';
+  return '<div class="card p-3 text-center"><span class="text-lg">' + icon + '</span><div class="text-pub-chalk-accent text-xs mt-1">' + type + '</div><div class="text-neon-green font-pub-display text-lg" style="text-shadow: 0 0 8px #39ff14;">' + pct + '%</div><div class="text-pub-chalk-accent text-xs">' + s.wins + 'W / ' + s.played + 'P</div></div>';
+}).join('') + '</div></div>' : ''}
+
+<!-- Streaks -->
+${stats.bestStreak > 0 ? '<div class="mb-8 flex gap-4"><div class="card p-4 flex-1 text-center"><div class="text-pub-chalk-accent text-xs uppercase font-pub-heading">Current Streak</div><div class="text-2xl font-pub-display ' + (stats.currentStreak > 0 ? 'text-neon-green' : 'text-pub-chalk-accent') + '">' + (stats.currentStreak > 0 ? stats.currentStreak + 'W 🔥' : '-') + '</div></div><div class="card p-4 flex-1 text-center"><div class="text-pub-chalk-accent text-xs uppercase font-pub-heading">Best Streak</div><div class="text-2xl font-pub-display text-neon-yellow">' + stats.bestStreak + 'W</div></div></div>' : ''}
+
+<!-- Head to Head -->
+${(() => {
+  const h2h = typeof h2hRecords !== 'undefined' ? h2hRecords : {};
+  const entries = Object.entries(h2h).filter(([_, r]) => r.played >= 2).sort((a, b) => b[1].played - a[1].played).slice(0, 6);
+  if (entries.length === 0) return '';
+  return '<div class="mb-8"><h2 class="text-lg font-pub-heading font-semibold text-pub-chalk-text mb-4 flex items-center gap-2"><span class="text-neon-pink">⚔️</span> Head to Head</h2><div class="grid grid-cols-1 sm:grid-cols-2 gap-3">' + entries.map(([uid, r]) => {
+    const avatar = r.avatar_url
+      ? '<img src="' + r.avatar_url + '" alt="" class="w-8 h-8 rounded-full object-cover ring-2 ring-pub-wood-medium">'
+      : '<div class="w-8 h-8 rounded-full bg-pub-green-700 flex items-center justify-center ring-2 ring-pub-wood-medium"><span class="text-xs font-bold text-neon-green">' + r.name.charAt(0).toUpperCase() + '</span></div>';
+    return '<a href="/users/' + uid + '" class="card p-3 flex items-center gap-3 hover:border-neon-pink/30 transition-colors">' + avatar + '<div class="flex-1"><div class="font-pub-heading text-aged-cream text-sm">' + r.name + '</div><div class="text-pub-chalk-accent text-xs">' + r.played + ' games</div></div><div class="text-right"><span class="text-neon-green font-bold">' + r.wins + '</span><span class="text-pub-chalk-accent"> - </span><span class="text-red-400 font-bold">' + r.losses + '</span></div></a>';
+  }).join('') + '</div></div>';
+})()}
+
 <!-- Crowns Section -->
 ${userCrowns.length > 0 ? '<div class="mb-8"><h2 class="text-lg font-pub-heading font-semibold text-pub-chalk-text mb-4 flex items-center gap-2"><span class="text-2xl">👑</span> Crowns Held</h2><div class="grid grid-cols-2 sm:grid-cols-4 gap-3">' + userCrowns.map(crown => {
   const typeIcon = crown.game_type === 'Cricket' ? '🦗' : crown.game_type === '301' || crown.game_type === '501' ? '🎯' : crown.game_type === 'Around the World' ? '🌍' : '🎲';

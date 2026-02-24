@@ -281,3 +281,68 @@
     background: #8b6f56;
   }
 }
+
+/* Light theme overrides */
+html.light body {
+  background: #f5f0e8;
+  color: #2d1810;
+}
+html.light .card, html.light .card-wood {
+  background: #fff;
+  border-color: #d4c5b0;
+  color: #2d1810;
+}
+html.light .bg-pub-wood-dark {
+  background: #e8dfd0 !important;
+}
+html.light .bg-pub-wood-medium {
+  background: #d4c5b0 !important;
+}
+html.light nav.bg-pub-wood-dark {
+  background: #f5f0e8 !important;
+  border-color: #d4c5b0 !important;
+}
+html.light footer.bg-pub-wood-dark {
+  background: #f5f0e8 !important;
+  border-color: #d4c5b0 !important;
+}
+html.light .text-pub-chalk-text,
+html.light .text-pub-chalk-accent,
+html.light .text-aged-cream {
+  color: #3d2a1a !important;
+}
+html.light .text-neon-pink {
+  color: #d4247a !important;
+  text-shadow: none !important;
+}
+html.light .text-neon-blue {
+  color: #0091b2 !important;
+}
+html.light .text-neon-green {
+  color: #1a8a1a !important;
+}
+html.light .text-neon-yellow {
+  color: #b8860b !important;
+}
+html.light .animate-neon-flicker {
+  animation: none !important;
+}
+html.light .pub-table th {
+  background: #e8dfd0;
+  color: #3d2a1a;
+}
+html.light .pub-table td {
+  border-color: #d4c5b0;
+}
+html.light input, html.light select, html.light textarea {
+  background: #fff !important;
+  border-color: #d4c5b0 !important;
+  color: #2d1810 !important;
+}
+html.light .speech-bubble {
+  background: #f0ebe0;
+  border-color: #d4c5b0;
+}
+html.light .chalk-header {
+  background: #e8dfd0;
+}

@@ -42,6 +42,9 @@ function renderMarksChalk(count) {
         <div class="text-right">
           <% if (series) { %>
             <span class="text-neon-yellow text-sm">Game <%= gameNumberInSeries %> of <%= series.series_length %></span>
+            <div id="series-tracker" class="flex gap-1 mt-1 justify-end">
+              <!-- Populated by JS -->
+            </div>
           <% } else if (game.starting_score) { %>
             <span class="text-pub-chalk-accent text-sm">Start: <%= game.starting_score %></span>
           <% } %>
@@ -51,7 +54,10 @@ function renderMarksChalk(count) {
       <!-- Turn Indicator with Volley Display -->
       <div id="turn-indicator" class="card rounded-lg p-3 text-center">
         <div class="text-sm text-pub-chalk-accent">Current Turn</div>
-        <div class="text-lg font-pub-heading text-neon-blue" id="current-player-name"><%= currentPlayer.name %></div>
+        <div class="flex items-center justify-center gap-2">
+          <span id="current-player-avatar" class="inline-block"></span>
+          <span class="text-2xl font-pub-heading text-neon-blue" id="current-player-name" style="text-shadow: 0 0 10px rgba(0, 212, 255, 0.5);"><%= currentPlayer.name %></span>
+        </div>
         <div class="flex justify-center gap-2 mt-2">
           <span class="dart-indicator <%= game.current_dart >= 1 ? (game.current_dart === 1 ? 'current' : 'thrown') : '' %>" data-dart="1"></span>
           <span class="dart-indicator <%= game.current_dart >= 2 ? (game.current_dart === 2 ? 'current' : 'thrown') : '' %>" data-dart="2"></span>
@@ -192,15 +198,15 @@ function renderMarksChalk(count) {
             <button class="multiplier-btn px-4 py-2 rounded bg-pub-wood-dark text-pub-chalk-accent" data-multiplier="2">Double</button>
             <button class="multiplier-btn px-4 py-2 rounded bg-pub-wood-dark text-pub-chalk-accent" data-multiplier="3">Triple</button>
           </div>
-          <div class="grid grid-cols-4 gap-2">
-            <button class="segment-btn p-3 rounded bg-pub-green-700 text-neon-green font-bold hover:bg-pub-green-600" data-segment="20">20</button>
-            <button class="segment-btn p-3 rounded bg-pub-green-700 text-neon-green font-bold hover:bg-pub-green-600" data-segment="19">19</button>
-            <button class="segment-btn p-3 rounded bg-pub-green-700 text-neon-green font-bold hover:bg-pub-green-600" data-segment="18">18</button>
-            <button class="segment-btn p-3 rounded bg-pub-green-700 text-neon-green font-bold hover:bg-pub-green-600" data-segment="17">17</button>
-            <button class="segment-btn p-3 rounded bg-pub-green-700 text-neon-green font-bold hover:bg-pub-green-600" data-segment="16">16</button>
-            <button class="segment-btn p-3 rounded bg-pub-green-700 text-neon-green font-bold hover:bg-pub-green-600" data-segment="15">15</button>
-            <button class="segment-btn p-3 rounded bg-red-700 text-red-200 font-bold hover:bg-red-600" data-segment="25">Bull</button>
-            <button class="segment-btn p-3 rounded bg-gray-700 text-gray-300 hover:bg-gray-600" data-segment="0">Miss</button>
+          <div class="grid grid-cols-2 gap-2">
+            <button class="segment-btn p-4 rounded bg-pub-green-700 text-neon-green font-bold text-lg hover:bg-pub-green-600 active:scale-95 transition-transform" data-segment="20">20</button>
+            <button class="segment-btn p-4 rounded bg-pub-green-700 text-neon-green font-bold text-lg hover:bg-pub-green-600 active:scale-95 transition-transform" data-segment="19">19</button>
+            <button class="segment-btn p-4 rounded bg-pub-green-700 text-neon-green font-bold text-lg hover:bg-pub-green-600 active:scale-95 transition-transform" data-segment="18">18</button>
+            <button class="segment-btn p-4 rounded bg-pub-green-700 text-neon-green font-bold text-lg hover:bg-pub-green-600 active:scale-95 transition-transform" data-segment="17">17</button>
+            <button class="segment-btn p-4 rounded bg-pub-green-700 text-neon-green font-bold text-lg hover:bg-pub-green-600 active:scale-95 transition-transform" data-segment="16">16</button>
+            <button class="segment-btn p-4 rounded bg-pub-green-700 text-neon-green font-bold text-lg hover:bg-pub-green-600 active:scale-95 transition-transform" data-segment="15">15</button>
+            <button class="segment-btn p-4 rounded bg-red-700 text-red-200 font-bold text-lg hover:bg-red-600 active:scale-95 transition-transform" data-segment="25">Bull</button>
+            <button class="segment-btn p-4 rounded bg-gray-700 text-gray-300 font-bold text-lg hover:bg-gray-600 active:scale-95 transition-transform" data-segment="0">Miss</button>
           </div>
         <% } else if (game.game_type === '301' || game.game_type === '501') { %>
           <!-- 01 Input -->
@@ -372,6 +378,23 @@ function renderMarksChalk(count) {
     @keyframes bull-run-glow {
       0%, 100% { box-shadow: 0 0 15px rgba(168, 85, 247, 0.4), 0 0 30px rgba(168, 85, 247, 0.2); }
       50% { box-shadow: 0 0 20px rgba(168, 85, 247, 0.6), 0 0 40px rgba(168, 85, 247, 0.3); }
+    }
+    /* Score change animation */
+    @keyframes score-pop {
+      0% { transform: scale(1); }
+      50% { transform: scale(1.3); color: #fbbf24; }
+      100% { transform: scale(1); }
+    }
+    .score-changed {
+      animation: score-pop 0.4s ease-out;
+    }
+    /* Current player avatar */
+    #current-player-avatar img {
+      width: 28px;
+      height: 28px;
+      border-radius: 50%;
+      object-fit: cover;
+      border: 2px solid #00d4ff;
     }
     .hidden { display: none; }
   </style>

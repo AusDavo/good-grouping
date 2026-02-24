@@ -542,6 +542,33 @@ router.post('/:id/extend-series', (req, res) => {
   res.redirect(`/live-games/${nextGameId}/lobby`);
 });
 
+// Rematch - create new game with same players and game type
+router.post('/:id/rematch', (req, res) => {
+  const game = liveGames.findById(req.params.id);
+
+  if (!game) {
+    return res.status(404).render('error', {
+      title: 'Not Found',
+      message: 'Game not found',
+    });
+  }
+
+  // Get player user IDs in the same order
+  const playerUserIds = game.players
+    .sort((a, b) => a.player_order - b.player_order)
+    .map(p => p.user_id);
+
+  // Parse starting score for 01 games
+  let score = null;
+  if (game.game_type === '301') score = 301;
+  if (game.game_type === '501') score = 501;
+
+  // Create the new live game
+  const newGameId = liveGames.create(game.game_type, score, req.user.id, playerUserIds);
+
+  res.redirect(`/live-games/${newGameId}/lobby`);
+});
+
 // Abandon/delete game
 router.post('/:id/abandon', (req, res) => {
   const game = liveGames.findById(req.params.id);

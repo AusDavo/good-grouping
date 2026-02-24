@@ -150,7 +150,7 @@ ${(() => {
           ? '<div class="absolute bottom-0 left-0 right-0 bg-black/70 p-2"><p class="text-white text-xs truncate">' + p.caption.replace(/</g, '&lt;').replace(/>/g, '&gt;') + '</p></div>'
           : '';
 
-        return '<div class="relative group"><a href="/uploads/game-photos/' + p.filename + '" target="_blank" class="block aspect-square overflow-hidden rounded-lg border-2 border-pub-wood-medium hover:border-neon-blue transition-colors"><img src="/uploads/game-photos/' + p.filename + '" alt="Game photo" class="w-full h-full object-cover"></a>' + deleteBtn + caption + '</div>';
+        return '<div class="relative group"><a href="/uploads/game-photos/' + p.filename + '" onclick="event.preventDefault();document.getElementById(&apos;lightbox-img&apos;).src=this.href;document.getElementById(&apos;lightbox&apos;).classList.remove(&apos;hidden&apos;)" class="block aspect-square overflow-hidden rounded-lg border-2 border-pub-wood-medium hover:border-neon-blue transition-colors cursor-pointer"><img src="/uploads/game-photos/' + p.filename + '" alt="Game photo" class="w-full h-full object-cover"></a>' + deleteBtn + caption + '</div>';
       }).join('') + '</div>';
     })()}
 
@@ -240,5 +240,11 @@ ${(() => {
 
   return '<div class="p-6 border-t-2 border-pub-wood-medium/50 bg-pub-brown-900/30"><form action="/games/' + game.id + '/delete" method="POST" onsubmit="return confirm(&apos;' + confirmMsg + '&apos;)"><button type="submit" class="btn btn-danger inline-flex items-center gap-2"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>' + buttonText + '</button></form></div>';
 })()}
+
+<!-- Photo Lightbox -->
+<div id="lightbox" class="hidden fixed inset-0 z-50 bg-black/90 flex items-center justify-center p-4" onclick="this.classList.add('hidden')">
+  <img id="lightbox-img" src="" alt="Photo" class="max-w-full max-h-full object-contain rounded-lg" onclick="event.stopPropagation()">
+  <button onclick="document.getElementById('lightbox').classList.add('hidden')" class="absolute top-4 right-4 text-white text-3xl hover:text-neon-pink">&times;</button>
+</div>
 </div>
 ` }) %>
