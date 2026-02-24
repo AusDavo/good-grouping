@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en" class="dark">
+<html lang="en">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -143,32 +143,6 @@
       <p class="text-pub-chalk-accent text-xs font-pub-body">
         Est. 2024 • Your Local Darts Scoreboard
       </p>
-      <button id="theme-toggle" onclick="toggleTheme()" class="mt-2 text-pub-chalk-accent text-xs hover:text-neon-blue transition-colors">
-        ☀️ Light Mode
-      </button>
-      <script>
-        function toggleTheme() {
-          const html = document.documentElement;
-          const btn = document.getElementById('theme-toggle');
-          if (html.classList.contains('light')) {
-            html.classList.remove('light');
-            localStorage.removeItem('theme');
-            btn.textContent = '☀️ Light Mode';
-          } else {
-            html.classList.add('light');
-            localStorage.setItem('theme', 'light');
-            btn.textContent = '🌙 Dark Mode';
-          }
-        }
-        // Restore theme preference
-        if (localStorage.getItem('theme') === 'light') {
-          document.documentElement.classList.add('light');
-          document.addEventListener('DOMContentLoaded', () => {
-            const btn = document.getElementById('theme-toggle');
-            if (btn) btn.textContent = '🌙 Dark Mode';
-          });
-        }
-      </script>
     </div>
   </footer>
 
